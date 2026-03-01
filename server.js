@@ -157,8 +157,55 @@ const server = http.createServer((req, res) => {
         }));
     }
 
-    res.end("Server running...");
-});
+    res.writeHead(200, { "Content-Type": "text/html" });
+res.end(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bon Key Server</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{
+    margin:0;
+    background:#000;
+    color:#00ff99;
+    font-family:monospace;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    flex-direction:column;
+}
+.box{
+    text-align:center;
+}
+h1{
+    font-size:18px;
+    margin-bottom:10px;
+}
+.status{
+    font-size:13px;
+    color:#666;
+    margin-bottom:20px;
+}
+.badge{
+    padding:6px 12px;
+    border:1px solid #00ff99;
+    border-radius:4px;
+    font-size:12px;
+}
+</style>
+</head>
+<body>
+    <div class="box">
+        <h1>BON KEY SYSTEM</h1>
+        <div class="status">Server running...</div>
+        <div class="badge">Link4m Enabled</div>
+    </div>
+</body>
+</html>
+`);
 
 server.listen(PORT, () => {
     console.log("Server running on port", PORT);
