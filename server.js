@@ -11,7 +11,7 @@ const DB_FILE = "database.json";
 
 let database = {};
 
-// Load database nếu có
+// Load database
 if (fs.existsSync(DB_FILE)) {
     database = JSON.parse(fs.readFileSync(DB_FILE));
 }
@@ -29,12 +29,10 @@ function shortenLink(longUrl, callback) {
 
     https.get(apiUrl, (resp) => {
         let data = "";
-
         resp.on("data", chunk => data += chunk);
         resp.on("end", () => {
             try {
-                const json = JSON.parse(data);
-                callback(json);
+                callback(JSON.parse(data));
             } catch {
                 callback(null);
             }
@@ -46,22 +44,22 @@ const server = http.createServer((req, res) => {
 
     const q = url.parse(req.url, true);
 
-    // ================================
-    // TẠO KEY + LINK4M
-    // ================================
+    // ==========================
+    // CREATE KEY (dùng pub)
+    // ==========================
     if (q.pathname === "/api/apikey/create") {
 
-        const device_id = q.query.device_id;
-        if (!device_id) {
-            return res.end(JSON.stringify({ error: "Missing device_id" }));
+        const pub = q.query.pub;
+
+        if (!pub) {
+            return res.end(JSON.stringify({ error: "Missing pub" }));
         }
 
         const now = Math.floor(Date.now() / 1000);
 
-        // Nếu còn hạn thì không cho tạo mới
-        if (database[device_id] &&
-            database[device_id].status === "verified" &&
-            database[device_id].expires_at > now) {
+        if (database[pub] &&
+            database[pub].status === "verified" &&
+            database[pub].expires_at > now) {
 
             return res.end(JSON.stringify({
                 error: "Key still active"
@@ -70,7 +68,7 @@ const server = http.createServer((req, res) => {
 
         const key = generateKey();
 
-        database[device_id] = {
+        database[pub] = {
             key: key,
             status: "pending",
             expires_at: 0
@@ -78,8 +76,8 @@ const server = http.createServer((req, res) => {
 
         saveDB();
 
-        // Link callback sau khi vượt link4m
-        const callbackUrl = `${process.env.RENDER_EXTERNAL_URL}/api/apikey/callback?key=${key}`;
+        const callbackUrl =
+            `${process.env.RENDER_EXTERNAL_URL}/api/apikey/callback?key=${key}`;
 
         shortenLink(callbackUrl, (result) => {
 
@@ -97,24 +95,23 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    // ================================
-    // CALLBACK SAU KHI VƯỢT LINK
-    // ================================
+    // ==========================
+    // CALLBACK
+    // ==========================
     if (q.pathname === "/api/apikey/callback") {
 
         const key = q.query.key;
 
-        for (let device in database) {
+        for (let pub in database) {
 
-            if (database[device].key === key) {
+            if (database[pub].key === key) {
 
-                database[device].status = "verified";
-                database[device].expires_at =
-                    Math.floor(Date.now() / 1000) + 86400; // 24H từ lúc kích hoạt
+                database[pub].status = "verified";
+                database[pub].expires_at =
+                    Math.floor(Date.now() / 1000) + 86400;
 
                 saveDB();
 
-                // Redirect về trang blog của m kèm key
                 res.writeHead(302, {
                     Location: `${KEY_PAGE}?ma=${key}`
                 });
@@ -126,19 +123,23 @@ const server = http.createServer((req, res) => {
         return res.end("Key not found");
     }
 
-    // ================================
-    // CHECK KEY
-    // ================================
+    // ==========================
+    // STATUS CHECK (APP CALL)
+    // ==========================
     if (q.pathname === "/api/apikey/status.sec") {
 
         const apiKey = q.query.api_key;
-        const device_id = q.query.device_id;
+        const pub = q.query.pub;
 
-        if (!database[device_id]) {
+        if (!apiKey || !pub) {
             return res.end(JSON.stringify({ is_expired: true }));
         }
 
-        const record = database[device_id];
+        if (!database[pub]) {
+            return res.end(JSON.stringify({ is_expired: true }));
+        }
+
+        const record = database[pub];
         const now = Math.floor(Date.now() / 1000);
 
         if (record.key !== apiKey ||
@@ -152,7 +153,7 @@ const server = http.createServer((req, res) => {
             device_limit: 1,
             devices_used: 1,
             is_expired: now > record.expires_at,
-            devices: [{ device_id: device_id }]
+            devices: [{ device_id: pub }]
         }));
     }
 
