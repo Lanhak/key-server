@@ -6,18 +6,29 @@ const https = require("https");
 
 const LINK4M_TOKEN = "6899fc9d171a1f07277dde22";
 const KEY_PAGE = "https://lanhakk.blogspot.com/2026/01/lanh-ak.html";
+const BASE_URL = "https://key-server-2-at8w.onrender.com"; // sửa nếu đổi domain
 const PORT = process.env.PORT || 3000;
 const DB_FILE = "database.json";
 
 let database = {};
 
-// Load database
-if (fs.existsSync(DB_FILE)) {
-    database = JSON.parse(fs.readFileSync(DB_FILE));
+// ===== LOAD DATABASE AN TOÀN =====
+try {
+    if (fs.existsSync(DB_FILE)) {
+        const raw = fs.readFileSync(DB_FILE);
+        database = raw.length ? JSON.parse(raw) : {};
+    }
+} catch (err) {
+    console.log("Database lỗi, reset về rỗng");
+    database = {};
 }
 
 function saveDB() {
-    fs.writeFileSync(DB_FILE, JSON.stringify(database, null, 2));
+    try {
+        fs.writeFileSync(DB_FILE, JSON.stringify(database, null, 2));
+    } catch (e) {
+        console.log("Lỗi khi lưu database");
+    }
 }
 
 function generateKey() {
@@ -25,14 +36,16 @@ function generateKey() {
 }
 
 function shortenLink(longUrl, callback) {
-    const apiUrl = `https://link4m.co/api-shorten/v2?api=${LINK4M_TOKEN}&url=${encodeURIComponent(longUrl)}`;
+    const apiUrl =
+        `https://link4m.co/api-shorten/v2?api=${LINK4M_TOKEN}&url=${encodeURIComponent(longUrl)}`;
 
     https.get(apiUrl, (resp) => {
         let data = "";
         resp.on("data", chunk => data += chunk);
         resp.on("end", () => {
             try {
-                callback(JSON.parse(data));
+                const json = JSON.parse(data);
+                callback(json);
             } catch {
                 callback(null);
             }
@@ -44,14 +57,12 @@ const server = http.createServer((req, res) => {
 
     const q = url.parse(req.url, true);
 
-    // ==========================
-    // CREATE KEY (dùng pub)
-    // ==========================
+    // ================= CREATE =================
     if (q.pathname === "/api/apikey/create") {
 
         const pub = q.query.pub;
-
         if (!pub) {
+            res.writeHead(200, { "Content-Type": "application/json" });
             return res.end(JSON.stringify({ error: "Missing pub" }));
         }
 
@@ -61,9 +72,8 @@ const server = http.createServer((req, res) => {
             database[pub].status === "verified" &&
             database[pub].expires_at > now) {
 
-            return res.end(JSON.stringify({
-                error: "Key still active"
-            }));
+            res.writeHead(200, { "Content-Type": "application/json" });
+            return res.end(JSON.stringify({ error: "Key still active" }));
         }
 
         const key = generateKey();
@@ -77,9 +87,11 @@ const server = http.createServer((req, res) => {
         saveDB();
 
         const callbackUrl =
-            `${process.env.RENDER_EXTERNAL_URL}/api/apikey/callback?key=${key}`;
+            `${BASE_URL}/api/apikey/callback?key=${key}`;
 
         shortenLink(callbackUrl, (result) => {
+
+            res.writeHead(200, { "Content-Type": "application/json" });
 
             if (!result || result.status === "error") {
                 return res.end(JSON.stringify({
@@ -88,16 +100,16 @@ const server = http.createServer((req, res) => {
             }
 
             return res.end(JSON.stringify({
-                shortened_link: result.shortenedUrl
+                shortened_link:
+                    result.shortenedUrl ||
+                    result.shortened_url
             }));
         });
 
         return;
     }
 
-    // ==========================
-    // CALLBACK
-    // ==========================
+    // ================= CALLBACK =================
     if (q.pathname === "/api/apikey/callback") {
 
         const key = q.query.key;
@@ -123,19 +135,15 @@ const server = http.createServer((req, res) => {
         return res.end("Key not found");
     }
 
-    // ==========================
-    // STATUS CHECK (APP CALL)
-    // ==========================
+    // ================= STATUS =================
     if (q.pathname === "/api/apikey/status.sec") {
 
         const apiKey = q.query.api_key;
         const pub = q.query.pub;
 
-        if (!apiKey || !pub) {
-            return res.end(JSON.stringify({ is_expired: true }));
-        }
+        res.writeHead(200, { "Content-Type": "application/json" });
 
-        if (!database[pub]) {
+        if (!apiKey || !pub || !database[pub]) {
             return res.end(JSON.stringify({ is_expired: true }));
         }
 
@@ -157,55 +165,21 @@ const server = http.createServer((req, res) => {
         }));
     }
 
+    // ================= TRANG CHỦ ĐẸP =================
     res.writeHead(200, { "Content-Type": "text/html" });
-res.end(`
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Bon Key Server</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body{
-    margin:0;
-    background:#000;
-    color:#00ff99;
-    font-family:monospace;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
-    flex-direction:column;
-}
-.box{
-    text-align:center;
-}
-h1{
-    font-size:18px;
-    margin-bottom:10px;
-}
-.status{
-    font-size:13px;
-    color:#666;
-    margin-bottom:20px;
-}
-.badge{
-    padding:6px 12px;
-    border:1px solid #00ff99;
-    border-radius:4px;
-    font-size:12px;
-}
-</style>
-</head>
-<body>
-    <div class="box">
-        <h1>BON KEY SYSTEM</h1>
-        <div class="status">Server running...</div>
-        <div class="badge">Link4m Enabled</div>
-    </div>
-</body>
-</html>
-`);
+    res.end(`
+    <html>
+    <body style="background:#000;color:#00ff99;
+    font-family:monospace;display:flex;
+    justify-content:center;align-items:center;
+    height:100vh;flex-direction:column;">
+        <h2>BON KEY SERVER</h2>
+        <p style="color:#666;">Server running...</p>
+        <p style="font-size:12px;">Link4m Enabled</p>
+    </body>
+    </html>
+    `);
+});
 
 server.listen(PORT, () => {
     console.log("Server running on port", PORT);
