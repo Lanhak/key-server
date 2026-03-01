@@ -143,18 +143,26 @@ const server = http.createServer((req, res) => {
 
         res.writeHead(200, { "Content-Type": "application/json" });
 
-        if (!apiKey || !pub || !database[pub]) {
-            return res.end(JSON.stringify({ is_expired: true }));
-        }
+        if (!apiKey) {
+    return res.end(JSON.stringify({ is_expired: true }));
+}
 
-        const record = database[pub];
+let record = null;
+
+for (let p in database) {
+    if (database[p].key === apiKey) {
+        record = database[p];
+        break;
+    }
+}
+
+if (!record || record.status !== "verified") {
+    return res.end(JSON.stringify({ is_expired: true }));
+}
+        
         const now = Math.floor(Date.now() / 1000);
 
-        if (record.key !== apiKey ||
-            record.status !== "verified") {
-
-            return res.end(JSON.stringify({ is_expired: true }));
-        }
+        
 
         return res.end(JSON.stringify({
             expires_at: record.expires_at,
