@@ -165,21 +165,70 @@ const server = http.createServer((req, res) => {
         }));
     }
 
-    // ================= TRANG CHỦ ĐẸP =================
-    res.writeHead(200, { "Content-Type": "text/html" });
-    res.end(`
-    <html>
-    <body style="background:#000;color:#00ff99;
-    font-family:monospace;display:flex;
-    justify-content:center;align-items:center;
-    height:100vh;flex-direction:column;">
-        <h2>BON KEY SERVER</h2>
-        <p style="color:#666;">Server running...</p>
-        <p style="font-size:12px;">Link4m Enabled</p>
-    </body>
-    </html>
-    `);
-});
+    // ================= TRANG CHỦ =================
+    if (q.pathname === "/") {
+        res.writeHead(200, { "Content-Type": "text/html" });
+        return res.end(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bon Key System</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{
+    margin:0;
+    background:#000;
+    color:#00ff99;
+    font-family:monospace;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    flex-direction:column;
+}
+button{
+    padding:10px 20px;
+    background:#00ff99;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+    font-weight:bold;
+}
+button:hover{
+    opacity:0.8;
+}
+</style>
+</head>
+<body>
+<h2>BON KEY SERVER</h2>
+<button onclick="getKey()">LẤY KEY FREE</button>
+
+<script>
+function getKey(){
+    let pub = "web_" + Math.random().toString(36).substring(7);
+
+    fetch("/api/apikey/create?pub=" + pub)
+    .then(res => res.json())
+    .then(data => {
+        if(data.shortened_link){
+            window.location.href = data.shortened_link;
+        }else{
+            alert(data.error || "Lỗi tạo link!");
+        }
+    });
+}
+</script>
+</body>
+</html>
+`);
+    }
+
+    // ===== fallback nếu route không tồn tại =====
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Not Found");
+
+}); // ĐÓNG createServer
 
 server.listen(PORT, () => {
     console.log("Server running on port", PORT);
