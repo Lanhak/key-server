@@ -292,15 +292,25 @@ if (q.pathname === "/notice/latest") {
         notices: []
     }));
 }
+//=======devices====≈=
     if (q.pathname.includes("/api/devices/register")) {
+
+    const ip = getClientIP(req);
+    const deviceId = generateDeviceId(ip);
+
+    console.log("IP:", ip);
+    console.log("DEVICE_ID:", deviceId);
 
     res.writeHead(200, { "Content-Type": "application/json" });
 
     return res.end(JSON.stringify({
-        success: true,
-        message: "Device registered"
+        ok: true,
+        status: "ok",
+        device_id: deviceId,
+        registered: true,
+        created_at: Math.floor(Date.now() / 1000)
     }));
-}
+    }
     
     // ===== DEBUG 404 =====
 console.log("404 PATH:", q.pathname);
