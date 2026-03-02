@@ -292,17 +292,16 @@ if (q.pathname === "/notice/latest") {
         notices: []
     }));
 }
-    if (
-    q.pathname === "/api/devices/register" ||
-    q.pathname === "//api/devices/register"
-) {
+    if (q.pathname.includes("/api/devices/register")) {
+
     res.writeHead(200, { "Content-Type": "application/json" });
 
     return res.end(JSON.stringify({
         success: true,
         message: "Device registered"
     }));
-            }
+}
+    
     // ===== DEBUG 404 =====
 console.log("404 PATH:", q.pathname);
 
