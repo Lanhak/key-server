@@ -53,6 +53,24 @@ function shortenLink(longUrl, callback) {
     }).on("error", () => callback(null));
 }
 
+const crypto = require("crypto");
+
+function getClientIP(req) {
+    const forwarded = req.headers["x-forwarded-for"];
+    if (forwarded) {
+        return forwarded.split(",")[0].trim();
+    }
+    return req.socket.remoteAddress;
+}
+
+function generateDeviceId(ip) {
+    return crypto
+        .createHash("sha256")
+        .update(ip)
+        .digest("hex")
+        .substring(0, 32);
+        }
+
 const server = http.createServer((req, res) => {
     console.log("REQUEST:", req.method, req.url);
     const q = url.parse(req.url, true);
