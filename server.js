@@ -53,8 +53,6 @@ function shortenLink(longUrl, callback) {
     }).on("error", () => callback(null));
 }
 
-const crypto = require("crypto");
-
 function getClientIP(req) {
     const forwarded = req.headers["x-forwarded-for"];
     if (forwarded) {
