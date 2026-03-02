@@ -231,7 +231,15 @@ function getKey(){
 </html>
 `);
     }
+// ================= SERVER TIME =================
+if (q.pathname === "/server-time") {
 
+    res.writeHead(200, { "Content-Type": "application/json" });
+
+    return res.end(JSON.stringify({
+        server_time: Math.floor(Date.now() / 1000)
+    }));
+}
     // ===== fallback nếu route không tồn tại =====
     res.writeHead(404, { "Content-Type": "text/plain" });
     res.end("Not Found");
