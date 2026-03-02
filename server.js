@@ -6,7 +6,7 @@ const https = require("https");
 
 const LINK4M_TOKEN = "6899fc9d171a1f07277dde22";
 const KEY_PAGE = "https://lanhakk.blogspot.com/2026/01/lanh-ak.html";
-const BASE_URL = "https://key-server-2-at8w.onrender.com"; // sửa nếu đổi domain
+const BASE_URL = "https://key-server-4-nsw2.onrender.com"; // sửa nếu đổi domain
 const PORT = process.env.PORT || 3000;
 const DB_FILE = "database.json";
 
