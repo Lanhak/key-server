@@ -309,8 +309,10 @@ if (q.pathname === "/notice/latest") {
     }));
 }
 //=======devices====≈=
-    if (q.pathname.includes("/api/devices/register")) {
 
+    const rawPath = url.parse(req.url).pathname;
+const pathname = rawPath.replace(/\/+/g, "/"); // bỏ double slash
+    if (pathname.startsWith("/api/devices/register")) {
     const ip = getClientIP(req);
     const deviceId = generateDeviceId(ip);
 
