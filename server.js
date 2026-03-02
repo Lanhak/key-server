@@ -62,12 +62,12 @@ function getClientIP(req) {
 }
 
 function generateDeviceId(ip) {
+function generateDeviceId(ip) {
     return crypto
-        .createHash("sha256")
-        .update(ip)
-        .digest("hex")
-        .substring(0, 32);
-        }
+        .createHash("md5")
+        .update(ip + "mtool_salt_2026")
+        .digest("hex"); // 32 ký tự
+}
 
 const server = http.createServer((req, res) => {
     console.log("REQUEST:", req.method, req.url);
