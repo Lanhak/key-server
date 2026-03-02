@@ -240,10 +240,6 @@ if (q.pathname === "/server-time") {
         server_time: Math.floor(Date.now() / 1000)
     }));
 }
-    // ===== fallback nếu route không tồn tại =====
-    res.writeHead(404, { "Content-Type": "text/plain" });
-    res.end("Not Found");
-
     // ================= KEYS =================
 if (q.pathname === "/keys") {
 
@@ -254,6 +250,9 @@ if (q.pathname === "/keys") {
         uri: "/keys"
     }));
 }
+    // ===== fallback nếu route không tồn tại =====
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Not Found");
 
 }); // ĐÓNG createServer
 
