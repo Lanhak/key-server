@@ -322,8 +322,14 @@ if (pathname === "/api/devices/register") {
         console.log("BODY:", body);
         console.log("HEADERS:", req.headers);
 
-        const ip = getClientIP(req);
-        const deviceId = generateDeviceId(ip);
+        let parsed;
+        try {
+            parsed = JSON.parse(body);
+        } catch {
+            parsed = {};
+        }
+
+        const deviceId = parsed.device_id || crypto.randomBytes(16).toString("hex");
         const now = new Date().toISOString();
 
         res.writeHead(200, { "Content-Type": "application/json" });
@@ -339,7 +345,7 @@ if (pathname === "/api/devices/register") {
     });
 
     return;
-            }
+}
     
     // ===== DEBUG 404 =====
 console.log("404 PATH:", q.pathname);
