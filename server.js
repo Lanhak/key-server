@@ -156,40 +156,56 @@ const server = http.createServer((req, res) => {
     }
     // ================= STATUS =================
     if (q.pathname === "/api/apikey/status.sec") {
-        console.log("STATUS REQUEST:", q.query);
-     const apiKey = q.query.api_key;
-     const pub = q.query.pub;
 
-        res.writeHead(200, { "Content-Type": "application/json" });
+    const apiKey = q.query.api_key;
+    const pub = q.query.pub;
 
-        if (!apiKey) {
-    return res.end(JSON.stringify({ is_expired: true }));
-}
+    res.writeHead(200, { "Content-Type": "application/json" });
 
-let record = null;
-
-for (let p in database) {
-    if (database[p].key === apiKey) {
-        record = database[p];
-        break;
-    }
-}
-
-if (!record || record.status !== "verified") {
-    return res.end(JSON.stringify({ is_expired: true }));
-}
-        
-        const now = Math.floor(Date.now() / 1000);
-
-        
-
+    // App bắt buộc phải có pub
+    if (!pub) {
         return res.end(JSON.stringify({
-            expires_at: record.expires_at,
-            device_limit: 1,
-            devices_used: 1,
-            is_expired: now > record.expires_at,
-            devices: [{ device_id: pub }]
+            ok: false,
+            error: "Missing pub"
         }));
+    }
+
+    if (!apiKey) {
+        return res.end(JSON.stringify({
+            ok: false,
+            error: "Missing api_key"
+        }));
+    }
+
+    // 🔥 Quan trọng: tra theo KEY, không tra theo pub
+    const record = database[apiKey];
+
+    if (!record) {
+        return res.end(JSON.stringify({
+            ok: false,
+            valid: false
+        }));
+    }
+
+    if (record.status !== "verified") {
+        return res.end(JSON.stringify({
+            ok: false,
+            valid: false
+        }));
+    }
+
+    if (Date.now() / 1000 > record.expires_at) {
+        return res.end(JSON.stringify({
+            ok: false,
+            expired: true
+        }));
+    }
+
+    return res.end(JSON.stringify({
+        ok: true,
+        valid: true,
+        expires_at: record.expires_at
+    }));
     }
 
     // ================= TRANG CHỦ =================
