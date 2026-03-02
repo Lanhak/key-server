@@ -295,6 +295,14 @@ if (q.pathname === "/notice/latest") {
     // ===== fallback nếu route không tồn tại =====
     res.writeHead(404, { "Content-Type": "text/plain" });
     res.end("Not Found");
+    // ===== DEBUG 404 =====
+console.log("404 PATH:", q.pathname);
+
+res.writeHead(404, { "Content-Type": "application/json" });
+res.end(JSON.stringify({
+    error: "Not Found",
+    path: q.pathname
+}));
 
 }); // ĐÓNG createServer
 
