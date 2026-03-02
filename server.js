@@ -271,6 +271,27 @@ if (q.pathname === "/notices") {
         notices: []
     }));
 }
+
+    // ================= NOTICE LATEST =================
+if (q.pathname === "/notice/latest") {
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+
+    return res.end(JSON.stringify({
+        ok: true,
+        force_update: false,
+        versionName: "2.6.9",
+        id: 0,
+        title: "",
+        message: "",
+        update_url: "",
+        motd: "",
+        notice: "",
+        status: "ok",
+        created_at: Math.floor(Date.now() / 1000),
+        notices: []
+    }));
+}
     // ===== fallback nếu route không tồn tại =====
     res.writeHead(404, { "Content-Type": "text/plain" });
     res.end("Not Found");
