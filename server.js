@@ -54,7 +54,7 @@ function shortenLink(longUrl, callback) {
 }
 
 const server = http.createServer((req, res) => {
-
+    console.log("REQUEST:", req.method, req.url);
     const q = url.parse(req.url, true);
 
     // ================= CREATE =================
