@@ -62,7 +62,6 @@ function getClientIP(req) {
 }
 
 function generateDeviceId(ip) {
-function generateDeviceId(ip) {
     return crypto
         .createHash("md5")
         .update(ip + "mtool_salt_2026")
