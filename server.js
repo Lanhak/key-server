@@ -127,29 +127,33 @@ const server = http.createServer((req, res) => {
     // ================= CALLBACK =================
     if (q.pathname === "/api/apikey/callback") {
 
-        const key = q.query.key;
-
-        for (let pub in database) {
-
-            if (database[pub].key === key) {
-
-                database[pub].status = "verified";
-                database[pub].expires_at =
-                    Math.floor(Date.now() / 1000) + 86400;
-
-                saveDB();
-
-                res.writeHead(302, {
-                    Location: `${KEY_PAGE}?ma=${key}`
-                });
-
-                return res.end();
-            }
-        }
-
-        return res.end("Key not found");
+    if (req.method === "HEAD") {
+        res.writeHead(200);
+        return res.end();
     }
 
+    const key = q.query.key;
+
+    for (let pub in database) {
+
+        if (database[pub].key === key) {
+
+            database[pub].status = "verified";
+            database[pub].expires_at =
+                Math.floor(Date.now() / 1000) + 86400;
+
+            saveDB();
+
+            res.writeHead(302, {
+                Location: `${KEY_PAGE}?ma=${key}`
+            });
+
+            return res.end();
+        }
+    }
+
+    return res.end("Key not found");
+    }
     // ================= STATUS =================
     if (q.pathname === "/api/apikey/status.sec") {
 
