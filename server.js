@@ -156,9 +156,9 @@ const server = http.createServer((req, res) => {
     }
     // ================= STATUS =================
     if (q.pathname === "/api/apikey/status.sec") {
-
-        const apiKey = q.query.api_key;
-        const pub = q.query.pub;
+        console.log("STATUS REQUEST:", q.query);
+     const apiKey = q.query.api_key;
+     const pub = q.query.pub;
 
         res.writeHead(200, { "Content-Type": "application/json" });
 
