@@ -250,6 +250,27 @@ if (q.pathname === "/keys") {
         uri: "/keys"
     }));
 }
+    
+    // ================= NOTICES =================
+if (q.pathname === "/notices") {
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+
+    return res.end(JSON.stringify({
+        ok: true,
+        force_update: false,
+        versionName: "2.6.9",
+        id: 0,
+        title: "",
+        message: "",
+        update_url: "",
+        motd: "",
+        notice: "",
+        status: "ok",
+        created_at: Math.floor(Date.now() / 1000),
+        notices: []
+    }));
+}
     // ===== fallback nếu route không tồn tại =====
     res.writeHead(404, { "Content-Type": "text/plain" });
     res.end("Not Found");
