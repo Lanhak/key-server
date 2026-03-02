@@ -312,23 +312,38 @@ if (q.pathname === "/notice/latest") {
 
     const rawPath = url.parse(req.url).pathname;
 const pathname = rawPath.replace(/\/+/g, "/"); // bỏ double slash
-    if (pathname.startsWith("/api/devices/register")) {
-    const ip = getClientIP(req);
-    const deviceId = generateDeviceId(ip);
+    if (pathname === "/api/devices/register") {
 
-    console.log("IP:", ip);
-    console.log("DEVICE_ID:", deviceId);
+    let body = "";
 
-    res.writeHead(200, { "Content-Type": "application/json" });
+    req.on("data", chunk => body += chunk);
 
-    return res.end(JSON.stringify({
-        ok: true,
-        status: "ok",
-        device_id: deviceId,
-        registered: true,
-        created_at: Math.floor(Date.now() / 1000)
-    }));
-    }
+    req.on("end", () => {
+
+        console.log("BODY:", body);
+        console.log("HEADERS:", req.headers);
+
+        const ip = getClientIP(req);
+        const deviceId = generateDeviceId(ip);
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+
+        res.end(JSON.stringify({
+            success: true,
+            ok: true,
+            status: 1,
+            code: 200,
+            message: "Device registered successfully",
+            device_id: deviceId,
+            data: {
+                device_id: deviceId,
+                registered: true
+            }
+        }));
+    });
+
+    return;
+            }
     
     // ===== DEBUG 404 =====
 console.log("404 PATH:", q.pathname);
