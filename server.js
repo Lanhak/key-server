@@ -308,10 +308,10 @@ if (q.pathname === "/notice/latest") {
     }));
 }
 //=======devices====≈=
+const rawPath = url.parse(req.url).pathname;
+const pathname = q.pathname.replace(/\/+/g, "/");
 
-    const rawPath = url.parse(req.url).pathname;
-const pathname = rawPath.replace(/\/+/g, "/"); // bỏ double slash
-    if (pathname === "/api/devices/register") {
+if (pathname === "/api/devices/register") {
 
     let body = "";
 
@@ -324,19 +324,18 @@ const pathname = rawPath.replace(/\/+/g, "/"); // bỏ double slash
 
         const ip = getClientIP(req);
         const deviceId = generateDeviceId(ip);
+        const now = new Date().toISOString();
 
         res.writeHead(200, { "Content-Type": "application/json" });
 
-        const now = new Date().toISOString();
-
-res.end(JSON.stringify({
-    ok: true,
-    device_id: deviceId,
-    client_secret_b64: Buffer.from(deviceId + "_secret").toString("base64"),
-    created_at: now,
-    last_seen: now,
-    secret_rotated_at: now
-});
+        res.end(JSON.stringify({
+            ok: true,
+            device_id: deviceId,
+            client_secret_b64: Buffer.from(deviceId + "_secret").toString("base64"),
+            created_at: now,
+            last_seen: now,
+            secret_rotated_at: now
+        }));
     });
 
     return;
