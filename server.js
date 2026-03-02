@@ -244,6 +244,17 @@ if (q.pathname === "/server-time") {
     res.writeHead(404, { "Content-Type": "text/plain" });
     res.end("Not Found");
 
+    // ================= KEYS =================
+if (q.pathname === "/keys") {
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+
+    return res.end(JSON.stringify({
+        ok: true,
+        uri: "/keys"
+    }));
+}
+
 }); // ĐÓNG createServer
 
 server.listen(PORT, () => {
