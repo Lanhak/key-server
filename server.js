@@ -327,18 +327,16 @@ const pathname = rawPath.replace(/\/+/g, "/"); // bỏ double slash
 
         res.writeHead(200, { "Content-Type": "application/json" });
 
-        res.end(JSON.stringify({
-            success: true,
-            ok: true,
-            status: 1,
-            code: 200,
-            message: "Device registered successfully",
-            device_id: deviceId,
-            data: {
-                device_id: deviceId,
-                registered: true
-            }
-        }));
+        const now = new Date().toISOString();
+
+res.end(JSON.stringify({
+    ok: true,
+    device_id: deviceId,
+    client_secret_b64: Buffer.from(deviceId + "_secret").toString("base64"),
+    created_at: now,
+    last_seen: now,
+    secret_rotated_at: now
+});
     });
 
     return;
