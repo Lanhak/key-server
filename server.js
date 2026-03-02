@@ -292,9 +292,17 @@ if (q.pathname === "/notice/latest") {
         notices: []
     }));
 }
-    // ===== fallback nếu route không tồn tại =====
-    res.writeHead(404, { "Content-Type": "text/plain" });
-    res.end("Not Found");
+    if (
+    q.pathname === "/api/devices/register" ||
+    q.pathname === "//api/devices/register"
+) {
+    res.writeHead(200, { "Content-Type": "application/json" });
+
+    return res.end(JSON.stringify({
+        success: true,
+        message: "Device registered"
+    }));
+            }
     // ===== DEBUG 404 =====
 console.log("404 PATH:", q.pathname);
 
