@@ -352,6 +352,34 @@ function getKey(){
     res.writeHead(200, { "Content-Type": "text/plain" });
     return res.end("valid");
     }
+
+    // ================= APP CONFIG =================
+if (pathname === "/config") {
+    return sendJSON(res, {
+        hethan: "Key hết hạn",
+        crack: "OK",                      // <-- đây chính là MToolMaxApp.i.d
+        keyhethan: "Key đã hết hạn",
+        keydahethan: "Key đã sử dụng",
+        thietbikhongcontrongkey: "Thiết bị không hợp lệ",
+        pathapikey: "/api/apikey/create",
+        pathregdevice: "/api/devices/register",
+        useragent: "BonApp/2.6.9",
+        pathsumbit: "/submit",
+        pathatackdevice: "/attack",
+        pathloginkey: "/login",
+        paththongbaomoi: "/notice/latest",
+        path50thongbao: "/notice/list",
+        pathenfbgolike: "/fb",
+        pathcaptcha: "/captcha",
+        pathgolike: "/golike",
+        pathfb: "/fb",
+        pathtds: "/tds",
+        pathig: "/ig",
+        pathttc: "/ttc",
+        pathtiktok: "/tiktok",
+        listapi: []
+    });
+}
     // ================= 404 =================
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({
