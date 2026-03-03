@@ -299,12 +299,18 @@ function getKey(){
 
         if(data.shortened_link){
 
-            // ÉP MỞ TRÌNH DUYỆT NGOÀI (Chrome)
-            if (window.navigator.userAgent.includes("Android")) {
-                window.open(data.shortened_link, "_system");
-            } else {
-                window.open(data.shortened_link, "_blank");
-            }
+            let clean = data.shortened_link.replace("https://", "");
+
+            let intent =
+                "intent://" + clean +
+                "#Intent;scheme=https;package=com.android.chrome;end";
+
+            window.location.href = intent;
+
+            // Nếu Chrome không mở, fallback sau 1 giây
+            setTimeout(() => {
+                window.location.href = data.shortened_link;
+            }, 1000);
 
         } else {
             alert(data.error || "Lỗi tạo link!");
