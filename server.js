@@ -327,7 +327,31 @@ function getKey(){
 </html>
 `);
     }
+//==========/////status.sec/////=========
+    if (pathname === "/api/apikey/status.sec") {
 
+    const apiKey = parsedUrl.query.api_key;
+
+    if (!apiKey || !database[apiKey]) {
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        return res.end("invalid");
+    }
+
+    const record = database[apiKey];
+
+    if (record.status !== "verified") {
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        return res.end("invalid");
+    }
+
+    if (now() > record.expires_at) {
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        return res.end("expired");
+    }
+
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    return res.end("valid");
+    }
     // ================= 404 =================
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({
