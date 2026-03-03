@@ -200,6 +200,7 @@ if (pathname === "/api/apikey/callback") {
     }
 
     // ================= KEY CHECK (APP DÙNG) =================
+
     // ================= KEY CHECK (APP DÙNG) =================
 if (
     pathname.startsWith("/keys/") &&
@@ -404,8 +405,8 @@ if (pathname === "/api/apikey/status.sec") {
 
     const ua = req.headers["user-agent"] || "";
 
-    if (ua !== "MToolMax-http") {
-        return sendJSON(res, { error: "invalid ua" });
+    if (!ua.includes("MToolMax-http")) {
+    return sendJSON(res, { error: "invalid ua" });
     }
 
     if (!apiKey || !pubBase64) {
