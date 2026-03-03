@@ -12,6 +12,22 @@ const DB_FILE = "database.json";
 
 let database = {};
 
+// ================= HMAC SIGN =================
+function createSignature(secretB64, dataString) {
+    const secret = Buffer.from(secretB64, "base64");
+
+    return crypto
+        .createHmac("sha256", secret)
+        .update(dataString, "utf8")
+        .digest("base64");
+}
+
+// ================= HMAC VERIFY =================
+function verifySignature(secretB64, dataString, signature) {
+    const expected = createSignature(secretB64, dataString);
+    return expected === signature;
+}
+
 // ================= LOAD DATABASE =================
 try {
     if (fs.existsSync(DB_FILE)) {
@@ -143,106 +159,144 @@ const server = http.createServer((req, res) => {
     // ================= DEVICE REGISTER =================
     if (pathname === "/api/devices/register" && req.method === "POST") {
 
-        let body = "";
-        req.on("data", chunk => body += chunk);
+    let body = "";
+    req.on("data", chunk => body += chunk);
 
-        req.on("end", () => {
+    req.on("end", () => {
 
-            let parsed;
-            try { parsed = JSON.parse(body); } catch { parsed = {}; }
+        let parsed;
+        try { parsed = JSON.parse(body); } catch { parsed = {}; }
 
-            const deviceId =
-                parsed.device_id ||
-                crypto.randomBytes(16).toString("hex");
+        const deviceId =
+            parsed.device_id ||
+            crypto.randomBytes(16).toString("hex");
 
-            const time = new Date().toISOString();
+        const timeISO = new Date().toISOString();
 
-            return sendJSON(res, {
-                ok: true,
-                device_id: deviceId,
-                client_secret_b64:
-                    Buffer.from(deviceId + "_secret").toString("base64"),
-                created_at: time,
-                last_seen: time,
-                secret_rotated_at: time
-            });
+        // 🔐 secret random 32 byte
+        const secretBytes = crypto.randomBytes(32);
+        const secretB64 = secretBytes.toString("base64");
+
+        if (!database.__devices) {
+            database.__devices = {};
+        }
+
+        database.__devices[deviceId] = {
+            device_id: deviceId,
+            secret: secretB64,
+            created_at: now(),
+            last_seen: now()
+        };
+
+        saveDB();
+
+        return sendJSON(res, {
+            ok: true,
+            device_id: deviceId,
+            client_secret_b64: secretB64,
+            created_at: timeISO,
+            last_seen: timeISO,
+            secret_rotated_at: timeISO
         });
+    });
 
-        return;
+    return;
     }
 
     // ================= KEY CHECK (APP DÙNG) =================
     if (pathname.startsWith("/keys/") &&
-        pathname.endsWith("/devices") &&
-        req.method === "POST") {
+    pathname.endsWith("/devices") &&
+    req.method === "POST") {
 
-        const parts = pathname.split("/");
-        const apiKey = parts[2];
+    const parts = pathname.split("/");
+    const apiKey = parts[2];
 
-        let body = "";
-        req.on("data", chunk => body += chunk);
+    let body = "";
+    req.on("data", chunk => body += chunk);
 
-        req.on("end", () => {
+    req.on("end", () => {
 
-            let parsed;
-            try { parsed = JSON.parse(body); } catch { parsed = {}; }
+        let parsed;
+        try { parsed = JSON.parse(body); } catch { parsed = {}; }
 
-            const deviceId = parsed.device_id;
+        const deviceId = parsed.device_id;
+        const timestamp = parsed.timestamp;
+        const nonce = parsed.nonce;
+        const signature = parsed.signature;
 
-            if (!apiKey || !database[apiKey]) {
-                return sendJSON(res, {
-                    ok: false,
-                    message: "Key not found",
-                    devices_used: 0,
-                    devices_remaining: 0
-                });
-            }
+        if (!database.__devices ||
+            !database.__devices[deviceId]) {
+            return sendJSON(res, { ok: false, message: "Device not registered" });
+        }
 
-            const record = database[apiKey];
-
-            if (record.status !== "verified") {
-                return sendJSON(res, {
-                    ok: false,
-                    message: "Key not verified",
-                    devices_used: 0,
-                    devices_remaining: 0
-                });
-            }
-
-            if (now() > record.expires_at) {
-                return sendJSON(res, {
-                    ok: false,
-                    message: "Key expired",
-                    devices_used: record.devices.length,
-                    devices_remaining: 0
-                });
-            }
-
-            if (!record.devices.includes(deviceId)) {
-
-                if (record.devices.length >= 1) {
-                    return sendJSON(res, {
-                        ok: false,
-                        message: "Device limit reached",
-                        devices_used: record.devices.length,
-                        devices_remaining: 0
-                    });
-                }
-
-                record.devices.push(deviceId);
-                saveDB();
-            }
-
+        const deviceRecord = database.__devices[deviceId];
+        const secretB64 = deviceRecord.secret;
+       if (!deviceId || !timestamp || !nonce || !signature) {
+    return sendJSON(res, {
+        ok: false,
+        message: "Missing parameters"
+    });
+       }
+        // 🔥 DATA FORMAT GIỐNG APP
+        const dataString =
+            apiKey + "|" +
+            deviceId + "|" +
+            timestamp + "|" +
+            nonce + "|" +
+            "devices" + "|" +
+            apiKey;
+        
+        if (!verifySignature(secretB64, dataString, signature)) {
             return sendJSON(res, {
-                ok: true,
-                message: "Key valid",
-                devices_used: record.devices.length,
-                devices_remaining: 1 - record.devices.length
+                ok: false,
+                message: "Invalid signature"
             });
-        });
+        }
 
-        return;
-    }
+        if (!apiKey || !database[apiKey]) {
+            return sendJSON(res, {
+                ok: false,
+                message: "Key not found"
+            });
+        }
+
+        const record = database[apiKey];
+
+        if (record.status !== "verified") {
+            return sendJSON(res, {
+                ok: false,
+                message: "Key not verified"
+            });
+        }
+
+        if (now() > record.expires_at) {
+            return sendJSON(res, {
+                ok: false,
+                message: "Key expired"
+            });
+        }
+
+        if (!record.devices.includes(deviceId)) {
+
+            if (record.devices.length >= 1) {
+                return sendJSON(res, {
+                    ok: false,
+                    message: "Device limit reached"
+                });
+            }
+
+            record.devices.push(deviceId);
+            saveDB();
+        }
+
+        return sendJSON(res, {
+            ok: true,
+            message: "Key valid"
+        });
+    });
+
+    return;
+                    }
 
     // ================= NOTICES =================
     if (pathname === "/notices" || pathname === "/notice/latest") {
