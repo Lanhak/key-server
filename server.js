@@ -362,6 +362,70 @@ if (pathname === "/api/devices/register") {
 
     return;
 }
+
+    // ================= KEY CHECK =================
+if (q.pathname.startsWith("/keys/") && q.pathname.endsWith("/devices")) {
+
+    const parts = q.pathname.split("/");
+    const apiKey = parts[2]; // /keys/{KEY}/devices
+
+    let body = "";
+
+    req.on("data", chunk => body += chunk);
+
+    req.on("end", () => {
+
+        let parsed;
+        try {
+            parsed = JSON.parse(body);
+        } catch {
+            parsed = {};
+        }
+
+        const deviceId = parsed.device_id;
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+
+        if (!apiKey || !database[apiKey]) {
+            return res.end(JSON.stringify({
+                ok: false,
+                message: "Key not found",
+                devices_used: 0,
+                devices_remaining: 0
+            }));
+        }
+
+        const record = database[apiKey];
+
+        if (record.status !== "verified") {
+            return res.end(JSON.stringify({
+                ok: false,
+                message: "Key not verified",
+                devices_used: 0,
+                devices_remaining: 0
+            }));
+        }
+
+        if (Math.floor(Date.now() / 1000) > record.expires_at) {
+            return res.end(JSON.stringify({
+                ok: false,
+                message: "Key expired",
+                devices_used: 0,
+                devices_remaining: 0
+            }));
+        }
+
+        // Nếu muốn giới hạn device thì xử lý tại đây
+        return res.end(JSON.stringify({
+            ok: true,
+            message: "Key valid",
+            devices_used: 1,
+            devices_remaining: 0
+        }));
+    });
+
+    return;
+}
     
     // ===== DEBUG 404 =====
 console.log("404 PATH:", q.pathname);
