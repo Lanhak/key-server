@@ -162,25 +162,23 @@ const server = http.createServer((req, res) => {
 
     res.writeHead(200, { "Content-Type": "application/json" });
 
-    // App bắt buộc phải có pub
-    if (!pub) {
+    if (!pub || !apiKey) {
         return res.end(JSON.stringify({
             ok: false,
-            error: "Missing pub"
+            error: "Missing params"
         }));
     }
 
-    if (!apiKey) {
-        return res.end(JSON.stringify({
-            ok: false,
-            error: "Missing api_key"
-        }));
-    }
-
-    // 🔥 Quan trọng: tra theo KEY, không tra theo pub
-    const record = database[apiKey];
+    const record = database[pub];
 
     if (!record) {
+        return res.end(JSON.stringify({
+            ok: false,
+            valid: false
+        }));
+    }
+
+    if (record.key !== apiKey) {
         return res.end(JSON.stringify({
             ok: false,
             valid: false
