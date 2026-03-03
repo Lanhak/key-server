@@ -443,6 +443,57 @@ if (pathname === "/api/apikey/status.sec") {
         return sendJSON(res, { error: "encrypt fail" });
     }
             }
+
+    // ================= KEY SEC =================
+if (
+    pathname.startsWith("/keys/") &&
+    pathname.endsWith(".sec")
+) {
+
+    const apiKey = pathname
+        .replace("/keys/", "")
+        .replace(".sec", "");
+
+    const pubBase64 = parsedUrl.query.pub;
+    const ua = req.headers["user-agent"] || "";
+
+    if (!ua.includes("MToolMax-http")) {
+        return sendJSON(res, { error: "invalid ua" });
+    }
+
+    if (!database[apiKey] || database[apiKey].status !== "verified") {
+        return sendJSON(res, { error: "invalid key" });
+    }
+
+    try {
+
+        const publicKey = crypto.createPublicKey({
+            key: Buffer.from(pubBase64, "base64"),
+            format: "pem"   // 🔥 QUAN TRỌNG
+        });
+
+        const aesSecret = crypto.randomBytes(32);
+
+        const encrypted = crypto.publicEncrypt(
+            {
+                key: publicKey,
+                padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+                oaepHash: "sha1"
+            },
+            aesSecret
+        );
+
+        return sendJSON(res, {
+            ek: encrypted.toString("base64")
+        });
+
+    } catch (err) {
+
+        console.log("ENCRYPT ERROR:", err);
+
+        return sendJSON(res, { error: "encrypt fail" });
+    }
+}
     // ================= APP CONFIG =================
 if (pathname === "/config") {
     return sendJSON(res, {
