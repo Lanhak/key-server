@@ -93,11 +93,11 @@ const server = http.createServer((req, res) => {
 
         const key = generateKey();
 
-        database[pub] = {
-            key: key,
-            status: "pending",
-            expires_at: 0
-        };
+        database[key] = {
+    pub: pub,
+    status: "pending",
+    expires_at: 0
+};
 
         saveDB();
 
