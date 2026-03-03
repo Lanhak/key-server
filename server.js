@@ -299,8 +299,12 @@ function getKey(){
 
         if(data.shortened_link){
 
-            // MỞ BẰNG TRÌNH DUYỆT NGOÀI
-            window.open(data.shortened_link, "_blank");
+            // ÉP MỞ TRÌNH DUYỆT NGOÀI (Chrome)
+            if (window.navigator.userAgent.includes("Android")) {
+                window.open(data.shortened_link, "_system");
+            } else {
+                window.open(data.shortened_link, "_blank");
+            }
 
         } else {
             alert(data.error || "Lỗi tạo link!");
