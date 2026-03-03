@@ -296,11 +296,16 @@ function getKey(){
     fetch("/api/apikey/create?pub=" + pub)
     .then(res => res.json())
     .then(data => {
+
         if(data.shortened_link){
-            window.location.href = data.shortened_link;
-        }else{
+
+            // MỞ BẰNG TRÌNH DUYỆT NGOÀI
+            window.open(data.shortened_link, "_blank");
+
+        } else {
             alert(data.error || "Lỗi tạo link!");
         }
+
     });
 }
 </script>
