@@ -56,7 +56,12 @@ function sendJSON(res, obj) {
 }
 
 function generateKey() {
-    return "bon_" + crypto.randomBytes(5).toString("hex");
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let random = "";
+    for (let i = 0; i < 6; i++) {
+        random += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return "MTOOLMAX-" + random;
 }
 
 function shortenLink(longUrl, callback) {
@@ -93,68 +98,59 @@ const server = http.createServer((req, res) => {
     if (pathname === "/server-time") {
         return sendJSON(res, { server_time: now() });
     }
+// ================= CREATE KEY =================
+if (pathname === "/api/apikey/create") {
 
-    // ================= CREATE KEY =================
-    if (pathname === "/api/apikey/create") {
+    const key = generateKey(); // MTOOLMAX-XXXXXX
 
-        const pub = parsedUrl.query.pub;
+    database[key] = {
+        key,
+        status: "pending",              // ⚠ chưa verified
+        expires_at: 0,
+        devices: [],
+        created_at: now()
+    };
 
-        if (!pub) {
-            return sendJSON(res, { error: "Missing pub" });
+    saveDB();
+
+    const callbackUrl =
+        `${BASE_URL}/api/apikey/callback?key=${key}`;
+
+    shortenLink(callbackUrl, (result) => {
+
+        if (!result || result.status === "error") {
+            return sendJSON(res, { error: "Link4m error" });
         }
 
-        const key = generateKey();
-
-        database[key] = {
-            key,
-            pub,
-            status: "pending",
-            expires_at: 0,
-            devices: [],
-            created_at: now()
-        };
-
-        saveDB();
-
-        const callbackUrl =
-            `${BASE_URL}/api/apikey/callback?key=${key}`;
-
-        shortenLink(callbackUrl, (result) => {
-
-            if (!result || result.status === "error") {
-                return sendJSON(res, { error: "Link4m error" });
-            }
-
-            return sendJSON(res, {
-                shortened_link:
-                    result.shortenedUrl ||
-                    result.shortened_url
-            });
+        return sendJSON(res, {
+            shortened_link:
+                result.shortenedUrl ||
+                result.shortened_url
         });
+    });
 
-        return;
-    }
-
+    return;
+}
     // ================= CALLBACK VERIFY =================
-    if (pathname === "/api/apikey/callback") {
+if (pathname === "/api/apikey/callback") {
 
-        const key = parsedUrl.query.key;
-        const record = database[key];
+    const key = parsedUrl.query.key;
+    const record = database[key];
 
-        if (!record) {
-            return res.end("Key not found");
-        }
-
-        record.status = "verified";
-        record.expires_at = now() + 86400; // 1 ngày
-        saveDB();
-
-        res.writeHead(302, {
-            Location: `${KEY_PAGE}?ma=${key}`
-        });
-
-        return res.end();
+    if (!record) {
+        return res.end("Key not found");
     }
+
+    record.status = "verified";
+    record.expires_at = now() + 86400; // 1 ngày
+    saveDB();
+
+    res.writeHead(302, {
+        Location: `${KEY_PAGE}?ma=${key}`
+    });
+
+    return res.end();
+}
 
     // ================= DEVICE REGISTER =================
     if (pathname === "/api/devices/register" && req.method === "POST") {
@@ -401,45 +397,51 @@ function getKey(){
 `);
     }
 //==========/////status.sec/////=========
-    // ================= STATUS.SEC (APP CHECK) =================
 if (pathname === "/api/apikey/status.sec") {
 
     const apiKey = parsedUrl.query.api_key;
-    const pub = parsedUrl.query.pub;
+    const pubBase64 = parsedUrl.query.pub;
 
-    // Check user agent bắt buộc theo app
     const ua = req.headers["user-agent"] || "";
+
     if (ua !== "MToolMax-http") {
-        res.writeHead(200, { "Content-Type": "text/plain" });
-        return res.end("invalid");
+        return sendJSON(res, { error: "invalid ua" });
     }
 
-    if (!apiKey || !database[apiKey]) {
-        res.writeHead(200, { "Content-Type": "text/plain" });
-        return res.end("invalid");
+    if (!apiKey || !pubBase64) {
+        return sendJSON(res, { error: "missing params" });
     }
 
-    const record = database[apiKey];
-
-    // pub phải trùng
-    if (!pub || record.pub !== pub) {
-        res.writeHead(200, { "Content-Type": "text/plain" });
-        return res.end("invalid");
+    if (!database[apiKey] || database[apiKey].status !== "verified") {
+        return sendJSON(res, { error: "invalid key" });
     }
 
-    if (record.status !== "verified") {
-        res.writeHead(200, { "Content-Type": "text/plain" });
-        return res.end("invalid");
-    }
+    try {
+        const publicKey = crypto.createPublicKey({
+            key: Buffer.from(pubBase64, "base64"),
+            format: "der",
+            type: "spki"
+        });
 
-    if (now() > record.expires_at) {
-        res.writeHead(200, { "Content-Type": "text/plain" });
-        return res.end("expired");
-    }
+        const aesSecret = crypto.randomBytes(32);
 
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    return res.end("valid");
-}
+        const encrypted = crypto.publicEncrypt(
+            {
+                key: publicKey,
+                padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+                oaepHash: "sha1"
+            },
+            aesSecret
+        );
+
+        return sendJSON(res, {
+            ek: encrypted.toString("base64")
+        });
+
+    } catch (err) {
+        return sendJSON(res, { error: "encrypt fail" });
+    }
+            }
     // ================= APP CONFIG =================
 if (pathname === "/config") {
     return sendJSON(res, {
@@ -467,6 +469,9 @@ if (pathname === "/config") {
         listapi: []
     });
 }
+
+
+    
     
     // ================= FALLBACK =================
     return sendJSON(res, {
