@@ -94,9 +94,10 @@ const server = http.createServer((req, res) => {
         const key = generateKey();
 
         database[key] = {
-    pub: pub,
-    status: "pending",
-    expires_at: 0
+           key: key, 
+           pub: pub,
+           status: "pending",
+           expires_at: 0
 };
 
         saveDB();
@@ -134,25 +135,22 @@ const server = http.createServer((req, res) => {
 
     const key = q.query.key;
 
-    for (let pub in database) {
+    const record = database[key];
 
-        if (database[pub].key === key) {
-
-            database[pub].status = "verified";
-            database[pub].expires_at =
-                Math.floor(Date.now() / 1000) + 86400;
-
-            saveDB();
-
-            res.writeHead(302, {
-                Location: `${KEY_PAGE}?ma=${key}`
-            });
-
-            return res.end();
-        }
+    if (!record) {
+        return res.end("Key not found");
     }
 
-    return res.end("Key not found");
+    record.status = "verified";
+    record.expires_at = Math.floor(Date.now() / 1000) + 86400;
+
+    saveDB();
+
+    res.writeHead(302, {
+        Location: `${KEY_PAGE}?ma=${key}`
+    });
+
+    return res.end();
     }
     // ================= STATUS =================
     if (q.pathname === "/api/apikey/status.sec") {
