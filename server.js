@@ -298,9 +298,9 @@ const server = http.createServer((req, res) => {
     return;
                     }
 
-    // ================= NOTICES =================
-    app.get("/notices", (req, res) => {
-    res.json([
+   // ================= NOTICES =================
+if (pathname === "/notices") {
+    return sendJSON(res, [
         {
             title: "Thông báo hệ thống",
             message: "Server mới đã hoạt động.",
@@ -314,17 +314,17 @@ const server = http.createServer((req, res) => {
             created_at: Date.now()
         }
     ]);
-});
+}
 
-    //==================//NOTICES/LATEST//======≈==
-    app.get("/notice/latest", (req, res) => {
-    res.json({
+// ================= NOTICE LATEST =================
+if (pathname === "/notice/latest") {
+    return sendJSON(res, {
         title: "Thông báo mới nhất",
         message: "Đây là notice mới nhất từ server.",
         versionName: "2.6.9",
         created_at: Date.now()
     });
-});
+                      }
     // ================= TRANG CHỦ =================
     if (pathname === "/") {
 
@@ -451,12 +451,11 @@ if (pathname === "/config") {
         listapi: []
     });
 }
-    // ================= 404 =================
-    res.writeHead(404, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({
-        error: "Not Found",
-        path: pathname
-    }));
+    
+    // ================= FALLBACK =================
+return sendJSON(res, {
+    ok: true,
+    uri: pathname
 });
 
 server.listen(PORT, () => {
