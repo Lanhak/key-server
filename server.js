@@ -299,15 +299,32 @@ const server = http.createServer((req, res) => {
                     }
 
     // ================= NOTICES =================
-    if (pathname === "/notices" || pathname === "/notice/latest") {
-        return sendJSON(res, {
-            ok: true,
-            force_update: false,
+    app.get("/notices", (req, res) => {
+    res.json([
+        {
+            title: "Thông báo hệ thống",
+            message: "Server mới đã hoạt động.",
             versionName: "2.6.9",
-            notices: []
-        });
-    }
+            created_at: Date.now()
+        },
+        {
+            title: "Cập nhật",
+            message: "App đã chuyển sang server riêng.",
+            versionName: "2.6.9",
+            created_at: Date.now()
+        }
+    ]);
+});
 
+    //==================//NOTICES/LATEST//======≈==
+    app.get("/notice/latest", (req, res) => {
+    res.json({
+        title: "Thông báo mới nhất",
+        message: "Đây là notice mới nhất từ server.",
+        versionName: "2.6.9",
+        created_at: Date.now()
+    });
+});
     // ================= TRANG CHỦ =================
     if (pathname === "/") {
 
