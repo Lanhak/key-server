@@ -445,7 +445,7 @@ if (pathname === "/api/apikey/status.sec") {
             }
 
     // ================= KEY SEC =================
-const parsedUrl = url.parse(req.url, true);
+
 const pathname = parsedUrl.pathname;
 const query = parsedUrl.query;
     
