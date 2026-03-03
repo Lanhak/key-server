@@ -445,9 +445,6 @@ if (pathname === "/api/apikey/status.sec") {
             }
 
     // ================= KEY SEC =================
-
-const pathname = parsedUrl.pathname;
-const query = parsedUrl.query;
     
 if (
     pathname.startsWith("/keys/") &&
