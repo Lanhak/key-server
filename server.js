@@ -455,7 +455,7 @@ if (
         .replace("/keys/", "")
         .replace(".sec", "");
 
-    const pubBase64 = query.pub; // 🔥 LẤY Ở ĐÂY
+    const pubBase64 = parsedUrl.query.pub; // 🔥 LẤY Ở ĐÂY
 
     if (!pubBase64) {
         console.log("NO PUB RECEIVED");
