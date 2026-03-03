@@ -64,11 +64,15 @@ function shortenLink(longUrl, callback) {
 // ================= SERVER =================
 const server = http.createServer((req, res) => {
 
+    console.log("===================================");
+    console.log("FULL REQUEST:", req.method, req.url);
+    console.log("HEADERS:", req.headers);
+    console.log("===================================");
+
     const parsedUrl = url.parse(req.url, true);
     const pathname = normalize(parsedUrl.pathname);
 
     console.log("REQUEST:", req.method, pathname);
-
     // ================= SERVER TIME =================
     if (pathname === "/server-time") {
         return sendJSON(res, { server_time: now() });
