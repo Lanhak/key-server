@@ -401,9 +401,18 @@ function getKey(){
 `);
     }
 //==========/////status.sec/////=========
-    if (pathname === "/api/apikey/status.sec") {
+    // ================= STATUS.SEC (APP CHECK) =================
+if (pathname === "/api/apikey/status.sec") {
 
     const apiKey = parsedUrl.query.api_key;
+    const pub = parsedUrl.query.pub;
+
+    // Check user agent bắt buộc theo app
+    const ua = req.headers["user-agent"] || "";
+    if (ua !== "MToolMax-http") {
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        return res.end("invalid");
+    }
 
     if (!apiKey || !database[apiKey]) {
         res.writeHead(200, { "Content-Type": "text/plain" });
@@ -411,6 +420,12 @@ function getKey(){
     }
 
     const record = database[apiKey];
+
+    // pub phải trùng
+    if (!pub || record.pub !== pub) {
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        return res.end("invalid");
+    }
 
     if (record.status !== "verified") {
         res.writeHead(200, { "Content-Type": "text/plain" });
@@ -424,8 +439,7 @@ function getKey(){
 
     res.writeHead(200, { "Content-Type": "text/plain" });
     return res.end("valid");
-    }
-
+}
     // ================= APP CONFIG =================
 if (pathname === "/config") {
     return sendJSON(res, {
