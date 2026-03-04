@@ -148,8 +148,12 @@ if (pathname === "/api/apikey/callback") {
     }
 
     record.status = "verified";
-    record.expires_at = now() + 86400;
-    saveDB();
+
+const created = now();
+record.created_at = created;
+record.expires_at = created + 86400;
+
+saveDB();
 
 
     res.writeHead(302, {
@@ -507,6 +511,15 @@ if (
         console.log("KEY NOT VERIFIED");
         return sendJSON(res, { ok:false });
     }
+    if (!record.expires_at) {
+    console.log("NO EXPIRES_AT");
+    return sendJSON(res, { ok:false });
+}
+
+if (now() > record.expires_at) {
+    console.log("KEY EXPIRED");
+    return sendJSON(res, { ok:false, message: "expired" });
+}
 
     try {
 
