@@ -103,6 +103,20 @@ if (pathname === "/server-time") {
         server_time: Math.floor(Date.now() / 1000)
     });
 }
+
+    // ================= KEY FILE =================
+if (pathname.startsWith("/keys/")) {
+
+    console.log("KEY REQUEST:", pathname);
+
+    return sendJSON(res, {
+        success: true,
+        status: "active",
+        expire: 1893456000,
+        message: "key ok"
+    });
+}
+    
 // ================= CREATE KEY =================
 if (pathname === "/api/apikey/create") {
 
