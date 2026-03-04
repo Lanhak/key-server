@@ -486,82 +486,63 @@ if (
     pathname.startsWith("/keys/") &&
     pathname.endsWith(".sec")
 ) {
-
     const apiKey = pathname
         .replace("/keys/", "")
         .replace(".sec", "");
 
     const pubBase64 = parsedUrl.query.pub;
 
-    console.log("SEC ROUTE HIT");
-    console.log("API KEY:", apiKey);
-
     if (!pubBase64) {
-        console.log("NO PUB RECEIVED");
         return sendJSON(res, { ok:false });
     }
-
-    console.log("PUB OK");
 
     const record = database[apiKey];
 
-    if (!database[apiKey]) {
-        console.log("KEY NOT FOUND IN DB");
+    if (!record || record.status !== "verified") {
         return sendJSON(res, { ok:false });
     }
 
-    if (database[apiKey].status !== "verified") {
-        console.log("KEY NOT VERIFIED");
+    const nowTime = now();
+
+    // Nếu chưa có expire hoặc expire <= now thì set lại 24h
+    if (!record.expires_at || record.expires_at <= nowTime) {
+        record.expires_at = nowTime + 86400;
+        saveDB();
+    }
+
+    const remaining = record.expires_at - nowTime;
+
+    if (remaining <= 0) {
         return sendJSON(res, { ok:false });
     }
-    if (record.status !== "verified") {
-    console.log("KEY NOT VERIFIED");
-    return sendJSON(res, { ok:false, message: "not_verified" });
-}
-
-// Nếu chưa có expire thì tự set 24h từ lúc tạo
-if (!record.expires_at || record.expires_at === 0) {
-    console.log("AUTO SET EXPIRE");
-    record.expires_at = record.created_at + 86400;
-    saveDB();
-}
-
-if (now() > record.expires_at) {
-    console.log("KEY EXPIRED");
-    return sendJSON(res, { ok:false, message: "expired" });
-}
 
     try {
-
-        console.log("CREATING PUBLIC KEY");
-
         const publicKey = crypto.createPublicKey({
             key: Buffer.from(pubBase64, "base64").toString("utf8"),
             format: "pem"
         });
 
-        console.log("PUBLIC KEY OK");
-
         const aesKey = crypto.randomBytes(32);
-        console.log("AES KEY GENERATED");
 
         const payload = JSON.stringify({
             ok: true,
+            remaining: remaining,
+            expires_at: record.expires_at,
+            server_time: nowTime,
             user_id: 123456,
             username: "admin",
             balance: 9999
         });
 
         const iv = crypto.randomBytes(12);
+        const cipher = crypto.createCipheriv("aes-256-gcm", aesKey, iv);
 
-const cipher = crypto.createCipheriv("aes-256-gcm", aesKey, iv);
+        const encryptedData = Buffer.concat([
+            cipher.update(payload, "utf8"),
+            cipher.final()
+        ]);
 
-let encryptedData = Buffer.concat([
-    cipher.update(payload, "utf8"),
-    cipher.final()
-]);
-
-const tag = cipher.getAuthTag();
+        const tag = cipher.getAuthTag();
 
         const encryptedKey = crypto.publicEncrypt(
             {
@@ -572,21 +553,18 @@ const tag = cipher.getAuthTag();
             aesKey
         );
 
-        console.log("RSA ENCRYPT OK");
-
         return sendJSON(res, {
-    ok: true,
-    ek: encryptedKey.toString("base64"),
-    iv: iv.toString("base64"),
-    ct: encryptedData.toString("base64"),
-    tag: tag.toString("base64")
-});
+            ok: true,
+            ek: encryptedKey.toString("base64"),
+            iv: iv.toString("base64"),
+            ct: encryptedData.toString("base64"),
+            tag: tag.toString("base64")
+        });
 
     } catch (err) {
-        console.log("SEC ERROR:", err);
         return sendJSON(res, { ok:false });
     }
-}
+    }
                         
     // ================= APP CONFIG =================
 if (pathname === "/config") {
