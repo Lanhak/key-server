@@ -135,6 +135,10 @@ if (pathname === "/api/apikey/create") {
 if (pathname === "/api/apikey/callback") {
 
     const key = parsedUrl.query.key;
+
+    console.log("KEY:", key);
+    console.log("DATABASE:", database);
+
     const record = database[key];
 
     if (!record) {
@@ -142,7 +146,7 @@ if (pathname === "/api/apikey/callback") {
     }
 
     record.status = "verified";
-    record.expires_at = now() + 86400; // 1 ngày
+    record.expires_at = now() + 86400;
     saveDB();
 
     res.writeHead(302, {
