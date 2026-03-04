@@ -478,40 +478,88 @@ if (
     pathname.startsWith("/keys/") &&
     pathname.endsWith(".sec")
 ) {
-    
+
     const apiKey = pathname
         .replace("/keys/", "")
         .replace(".sec", "");
 
-    const pubBase64 = parsedUrl.query.pub; // 🔥 LẤY Ở ĐÂY
+    const pubBase64 = parsedUrl.query.pub;
+
+    console.log("SEC ROUTE HIT");
+    console.log("API KEY:", apiKey);
 
     if (!pubBase64) {
         console.log("NO PUB RECEIVED");
-        return sendJSON(res, { error: "no pub" });
+        return sendJSON(res, { ok:false });
     }
 
     console.log("PUB OK");
 
-    const publicKey = crypto.createPublicKey({
-        key: Buffer.from(pubBase64, "base64").toString(),
-        format: "pem"
-    });
+    if (!database[apiKey]) {
+        console.log("KEY NOT FOUND IN DB");
+        return sendJSON(res, { ok:false });
+    }
 
-    const aesSecret = crypto.randomBytes(32);
+    if (database[apiKey].status !== "verified") {
+        console.log("KEY NOT VERIFIED");
+        return sendJSON(res, { ok:false });
+    }
 
-    const encrypted = crypto.publicEncrypt(
-        {
-            key: publicKey,
-            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-            oaepHash: "sha1"
-        },
-        aesSecret
-    );
+    try {
 
-    return sendJSON(res, {
-        ek: encrypted.toString("base64")
-    });
-        }
+        console.log("CREATING PUBLIC KEY");
+
+        const publicKey = crypto.createPublicKey({
+            key: Buffer.from(pubBase64, "base64").toString("utf8"),
+            format: "pem"
+        });
+
+        console.log("PUBLIC KEY OK");
+
+        const aesKey = crypto.randomBytes(32);
+        console.log("AES KEY GENERATED");
+
+        const payload = JSON.stringify({
+            ok: true,
+            user_id: 123456,
+            username: "admin",
+            balance: 9999
+        });
+
+        const iv = crypto.randomBytes(12);
+        const cipher = crypto.createCipheriv("aes-256-gcm", aesKey, iv);
+
+        let encryptedData = cipher.update(payload, "utf8");
+        encryptedData = Buffer.concat([encryptedData, cipher.final()]);
+        const tag = cipher.getAuthTag();
+
+        console.log("AES ENCRYPT OK");
+
+        const encryptedKey = crypto.publicEncrypt(
+            {
+                key: publicKey,
+                padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+                oaepHash: "sha256"
+            },
+            aesKey
+        );
+
+        console.log("RSA ENCRYPT OK");
+
+        return sendJSON(res, {
+            ok: true,
+            ek: encryptedKey.toString("base64"),
+            iv: iv.toString("base64"),
+            ct: encryptedData.toString("base64"),
+            tag: tag.toString("base64")
+        });
+
+    } catch (err) {
+        console.log("SEC ERROR:", err);
+        return sendJSON(res, { ok:false });
+    }
+}
+                        
     // ================= APP CONFIG =================
 if (pathname === "/config") {
     return sendJSON(res, {
