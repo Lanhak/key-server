@@ -28,9 +28,6 @@ function verifySignature(secretB64, dataString, signature) {
     return expected === signature;
 }
 
-function now() {
-    return Math.floor(Date.now() / 1000);
-}
 
 // ================= LOAD DATABASE =================
 try {
@@ -505,6 +502,8 @@ if (
     }
 
     console.log("PUB OK");
+
+    const record = database[apiKey];
 
     if (!database[apiKey]) {
         console.log("KEY NOT FOUND IN DB");
