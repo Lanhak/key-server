@@ -547,14 +547,13 @@ if (
             aesKey
         );
 
-        res.writeHead(200, { "Content-Type": "text/plain" });
-
-return res.end(
-    encryptedKey.toString("base64") + "." +
-    iv.toString("base64") + "." +
-    encryptedData.toString("base64") + "." +
-    tag.toString("base64")
-);
+        return sendJSON(res, {
+          ok: true
+          ek: encryptedKey.toString("base64"),
+          iv: iv.toString("base64"),
+          ct: encryptedData.toString("base64"),
+          tag: tag.toString("base64")
+   });
 
     } catch (err) {
         return sendJSON(res, { ok:false });
