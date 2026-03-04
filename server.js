@@ -148,12 +148,9 @@ if (pathname === "/api/apikey/callback") {
     }
 
     record.status = "verified";
+    record.expires_at = now() + 86400;
+    saveDB();
 
-const nowSec = Math.floor(Date.now() / 1000);  // ✅ seconds
-record.created_at = nowSec;
-record.expires_at = nowSec + 86400;            // 24 tiếng
-
-saveDB();
 
     res.writeHead(302, {
         Location: `${KEY_PAGE}?ma=${key}`
@@ -510,12 +507,6 @@ if (
         console.log("KEY NOT VERIFIED");
         return sendJSON(res, { ok:false });
     }
-
-    const nowSec = Math.floor(Date.now() / 1000);
-
-if (!record.expires_at || nowSec > record.expires_at) {
-    return sendJSON(res, { ok: false, error: "expired" });
-}
 
     try {
 
