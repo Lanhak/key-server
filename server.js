@@ -461,8 +461,8 @@ if (pathname === "/api/apikey/status.sec") {
             user_id: 123456,
             username: "admin",
             balance: 9999,
-            devices_used: record.devices ? record.devices.length : 0,
-            devices_limit: 1
+            devices_used: record.devices ? record.devices.length : 1,
+            devices_limit: 2
         });
 
         const iv = crypto.randomBytes(12);
@@ -547,8 +547,8 @@ if (
             server_time: nowTime,
             user_id: 123456,
             username: "admin",
-            devices_used: 0,
-            devices_limit: 1,
+            devices_used: 1,
+            devices_limit: 2,
             balance: 9999
         });
 
