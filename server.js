@@ -28,6 +28,10 @@ function verifySignature(secretB64, dataString, signature) {
     return expected === signature;
 }
 
+function now() {
+    return Math.floor(Date.now() / 1000);
+}
+
 // ================= LOAD DATABASE =================
 try {
     if (fs.existsSync(DB_FILE)) {
