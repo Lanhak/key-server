@@ -223,96 +223,38 @@ if (
     const apiKey = parts[2];
 
     let body = "";
-    req.on("data", chunk => body += chunk);
+req.on("data", chunk => body += chunk);
 
-    req.on("end", () => {
+req.on("end", () => {
 
-        let parsed;
-        try {
-            parsed = JSON.parse(body);
-        } catch {
-            return sendJSON(res, { ok:false, message:"Invalid JSON" });
-        }
+    let parsed;
+    try {
+        parsed = JSON.parse(body);
+    } catch {
+        parsed = {};
+    }
 
-        const { device_id, ts, nonce, iv, ct, tag, sig } = parsed;
+    const device_id = parsed.device_id;
 
-        if (!device_id || !ts || !nonce || !iv || !ct || !tag || !sig) {
-            return sendJSON(res, { ok:false, message:"Missing parameters" });
-        }
+    if (!device_id) {
+        return sendJSON(res, { ok:false, message:"No device_id" });
+    }
 
-        if (!database.__devices || !database.__devices[device_id]) {
-            return sendJSON(res, { ok:false, message:"Device not registered" });
-        }
+    const record = database[apiKey];
 
-        const secretB64 = database.__devices[device_id].secret;
-        const secretBytes = Buffer.from(secretB64, "base64");
+    if (!record.devices) record.devices = [];
 
-        // 🔥 THỨ TỰ ĐÚNG THEO SMALI
-        const dataString =
-            iv + "|" +
-            ct + "|" +
-            tag + "|" +
-            ts + "|" +
-            nonce + "|" +
-            device_id;
+    if (!record.devices.includes(device_id)) {
+        record.devices.push(device_id);
+    }
 
-        const expectedSig = crypto
-            .createHmac("sha256", secretBytes)
-            .update(dataString, "utf8")
-            .digest("base64");
+    saveDB();
 
-        if (expectedSig !== sig) {
-            return sendJSON(res, { ok:false, message:"Invalid signature" });
-        }
-
-        // Timestamp check (60s)
-        if (Math.abs(now() - parseInt(ts)) > 60) {
-            return sendJSON(res, { ok:false, message:"Timestamp invalid" });
-        }
-
-        // Replay protection
-        if (!database.__nonces) database.__nonces = {};
-        if (database.__nonces[nonce]) {
-            return sendJSON(res, { ok:false, message:"Replay detected" });
-        }
-        database.__nonces[nonce] = true;
-
-        if (!apiKey || !database[apiKey]) {
-            return sendJSON(res, { ok:false, message:"Key not found" });
-        }
-
-        const record = database[apiKey];
-
-        if (record.status !== "verified") {
-            return sendJSON(res, { ok:false, message:"Key not verified" });
-        }
-
-        if (now() > record.expires_at) {
-            return sendJSON(res, { ok:false, message:"Key expired" });
-        }
-
-        // LUÔN cho thêm device, không giới hạn
-if (!record.devices.includes(device_id)) {
-    record.devices.push(device_id);
-}
-
-saveDB();
-
-return sendJSON(res, {
-    ok: true,
-    message: "Key valid"
-});
-
-        saveDB();
-
-        return sendJSON(res, {
-            ok: true,
-            message: "Key valid"
-        });
+    return sendJSON(res, {
+        ok: true,
+        message: "Key valid"
     });
-
-    return;
-            }
+});
 
    // ================= NOTICES =================
 if (pathname === "/notices") {
