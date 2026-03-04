@@ -547,9 +547,8 @@ if (
             aesKey
         );
 
-        res.writeHead(200, { "Content-Type": "text/plain" });
-
-return sendJSON(res, {
+    
+        return sendJSON(res, {
             ok: true,
             ek: encryptedKey.toString("base64"),
             iv: iv.toString("base64"),
