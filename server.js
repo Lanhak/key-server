@@ -110,7 +110,7 @@ if (pathname.startsWith("/keys/")) {
     console.log("KEY REQUEST:", pathname);
 
     return sendJSON(res, {
-        success: true,
+        ok: true,
         status: "active",
         expire: 1893456000,
         message: "key ok"
