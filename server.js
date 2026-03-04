@@ -539,7 +539,7 @@ if (
             {
                 key: publicKey,
                 padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-                oaepHash: "sha256"
+                oaepHash: "sha1"
             },
             aesKey
         );
