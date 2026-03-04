@@ -223,39 +223,44 @@ if (
     const apiKey = parts[2];
 
     let body = "";
-req.on("data", chunk => body += chunk);
+    req.on("data", chunk => body += chunk);
 
-req.on("end", () => {
+    req.on("end", () => {
 
-    let parsed;
-    try {
-        parsed = JSON.parse(body);
-    } catch {
-        parsed = {};
-    }
+        let parsed;
+        try {
+            parsed = JSON.parse(body);
+        } catch {
+            parsed = {};
+        }
 
-    const device_id = parsed.device_id;
+        const device_id = parsed.device_id;
 
-    if (!device_id) {
-        return sendJSON(res, { ok:false, message:"No device_id" });
-    }
+        if (!device_id) {
+            return sendJSON(res, { ok:false, message:"No device_id" });
+        }
 
-    const record = database[apiKey];
+        const record = database[apiKey];
+        if (!record) {
+            return sendJSON(res, { ok:false });
+        }
 
-    if (!record.devices) record.devices = [];
+        if (!record.devices) record.devices = [];
 
-    if (!record.devices.includes(device_id)) {
-        record.devices.push(device_id);
-    }
+        if (!record.devices.includes(device_id)) {
+            record.devices.push(device_id);
+        }
 
-    saveDB();
+        saveDB();
 
-    return sendJSON(res, {
-        ok: true,
-        message: "Key valid"
+        return sendJSON(res, {
+            ok: true,
+            message: "Key valid"
+        });
     });
-});
 
+    return;   // ✅ QUAN TRỌNG
+        }
    // ================= NOTICES =================
 if (pathname === "/notices") {
     return sendJSON(res, [
