@@ -282,7 +282,7 @@ if (pathname === "/notice/latest") {
         versionName: "2.6.9",
         created_at: Date.now()
     });
-                      }
+ }
     // ================= TRANG CHỦ =================
     if (pathname === "/") {
 
