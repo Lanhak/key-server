@@ -531,6 +531,8 @@ if (
             server_time: nowTime,
             user_id: 123456,
             username: "admin",
+            devices_used: 0,
+            devices_limit: 1,
             balance: 9999
         });
 
