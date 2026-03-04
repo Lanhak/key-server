@@ -291,12 +291,17 @@ if (
             return sendJSON(res, { ok:false, message:"Key expired" });
         }
 
-        if (!record.devices.includes(device_id)) {
-            if (record.devices.length >= 1) {
-                return sendJSON(res, { ok:false, message:"Device limit reached" });
-            }
-            record.devices.push(device_id);
-        }
+        // LUÔN cho thêm device, không giới hạn
+if (!record.devices.includes(device_id)) {
+    record.devices.push(device_id);
+}
+
+saveDB();
+
+return sendJSON(res, {
+    ok: true,
+    message: "Key valid"
+});
 
         saveDB();
 
