@@ -556,11 +556,12 @@ if (
             tag: tag.toString("base64")
         });
 
-    } catch (err) {
+    } 
+    
+    catch (err) {
         return sendJSON(res, { ok:false });
     }
-    }
-                        
+}                       
     // ================= APP CONFIG =================
 if (pathname === "/config") {
     return sendJSON(res, {
