@@ -416,6 +416,7 @@ function getKey(){
     }
 //==========/////status.sec/////=========
 if (pathname === "/api/apikey/status.sec") {
+if (pathname === "/api/apikey/status.sec") {
 
     const apiKey = parsedUrl.query.api_key;
     const pubBase64 = parsedUrl.query.pub;
@@ -429,39 +430,54 @@ if (pathname === "/api/apikey/status.sec") {
         return sendJSON(res, { ok:false });
     }
 
-    if (!database[apiKey] || database[apiKey].status !== "verified") {
+    const record = database[apiKey];
+
+    if (!record || record.status !== "verified") {
         return sendJSON(res, { ok:false });
     }
 
+    const nowTime = now();
+
+    if (!record.expires_at || record.expires_at <= nowTime) {
+        record.expires_at = nowTime + 86400;
+        saveDB();
+    }
+
+    const remaining = record.expires_at - nowTime;
+
     try {
 
-        // ====== 1️⃣ RSA PUBLIC KEY ======
         const publicKey = crypto.createPublicKey({
-    key: Buffer.from(pubBase64, "base64").toString("utf8"),
-    format: "pem"
-});
-
-        // ====== 2️⃣ TẠO AES KEY ======
-        const aesKey = crypto.randomBytes(32);
-
-        // ====== 3️⃣ PAYLOAD BÊN TRONG ======
-        const payload = JSON.stringify({
-            ok: true,
-            user_id: 123456,
-            username: "admin",
-            balance: 9999
+            key: Buffer.from(pubBase64, "base64").toString("utf8"),
+            format: "pem"
         });
 
-        // ====== 4️⃣ AES-GCM ENCRYPT ======
+        const aesKey = crypto.randomBytes(32);
+
+        const payload = JSON.stringify({
+            ok: true,
+            remaining: remaining,
+            expires_at: record.expires_at,
+            server_time: nowTime,
+
+            user_id: 123456,
+            username: "admin",
+            balance: 9999,
+
+            devices_used: record.devices ? record.devices.length : 0,
+            devices_limit: 1
+        });
+
         const iv = crypto.randomBytes(12);
         const cipher = crypto.createCipheriv("aes-256-gcm", aesKey, iv);
 
-        let encryptedData = cipher.update(payload, "utf8");
-        encryptedData = Buffer.concat([encryptedData, cipher.final()]);
+        const encryptedData = Buffer.concat([
+            cipher.update(payload, "utf8"),
+            cipher.final()
+        ]);
 
         const tag = cipher.getAuthTag();
 
-        // ====== 5️⃣ RSA ENCRYPT AES KEY ======
         const encryptedKey = crypto.publicEncrypt(
             {
                 key: publicKey,
@@ -471,7 +487,6 @@ if (pathname === "/api/apikey/status.sec") {
             aesKey
         );
 
-        // ====== 6️⃣ RESPONSE ĐÚNG FORMAT ======
         return sendJSON(res, {
             ok: true,
             ek: encryptedKey.toString("base64"),
@@ -480,11 +495,10 @@ if (pathname === "/api/apikey/status.sec") {
             tag: tag.toString("base64")
         });
 
-    } catch (err) {
+    } catch {
         return sendJSON(res, { ok:false });
     }
-}
-
+            }
     // ================= KEY SEC =================
     
 if (
