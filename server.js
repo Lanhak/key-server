@@ -104,19 +104,6 @@ if (pathname === "/server-time") {
     });
 }
 
-    // ================= KEY FILE =================
-if (pathname.startsWith("/keys/")) {
-
-    console.log("KEY REQUEST:", pathname);
-
-    return sendJSON(res, {
-        ok: true,
-        status: "active",
-        expire: 1893456000,
-        message: "key ok"
-    });
-}
-    
 // ================= CREATE KEY =================
 if (pathname === "/api/apikey/create") {
 
