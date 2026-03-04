@@ -462,7 +462,7 @@ if (pathname === "/api/apikey/status.sec") {
             username: "admin",
             balance: 9999,
             devices_used: record.devices ? record.devices.length : 1,
-            devices_limit: 2
+            devices_limit: record.devices ? record.devices.length : 2
         });
 
         const iv = crypto.randomBytes(12);
