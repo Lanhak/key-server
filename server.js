@@ -199,7 +199,7 @@ saveDB();
         saveDB();
 
         return sendJSON(res, {
-            ok: true,
+            success: true,
             device_id: deviceId,
             client_secret_b64: secretB64,
             created_at: timeISO,
