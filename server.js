@@ -399,7 +399,6 @@ function getKey(){
     }
 //==========/////status.sec/////=========
 if (pathname === "/api/apikey/status.sec") {
-if (pathname === "/api/apikey/status.sec") {
 
     const apiKey = parsedUrl.query.api_key;
     const pubBase64 = parsedUrl.query.pub;
