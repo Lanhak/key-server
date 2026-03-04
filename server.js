@@ -546,12 +546,18 @@ if (now() > record.expires_at) {
         });
 
         const iv = crypto.randomBytes(12);
-        const cipher = crypto.createCipheriv("aes-256-gcm", aesKey, iv);
 
-        let encryptedData = cipher.update(payload, "utf8");
-        encryptedData = Buffer.concat([encryptedData, cipher.final()]);
-        const tag = cipher.getAuthTag();
+const cipher = crypto.createCipheriv("aes-256-gcm", aesKey, iv);
 
+let encrypted = Buffer.concat([
+    cipher.update(payload, "utf8"),
+    cipher.final()
+]);
+
+const tag = cipher.getAuthTag();
+
+// 🔥 GỘP TAG VÀO CUỐI ciphertext
+const finalCiphertext = Buffer.concat([encrypted, tag]);
         console.log("AES ENCRYPT OK");
 
         const encryptedKey = crypto.publicEncrypt(
@@ -570,7 +576,6 @@ if (now() > record.expires_at) {
             ek: encryptedKey.toString("base64"),
             iv: iv.toString("base64"),
             ct: encryptedData.toString("base64"),
-            tag: tag.toString("base64")
         });
 
     } catch (err) {
