@@ -562,6 +562,15 @@ if (pathname === "/config") {
     });
 }
 
+// ================= SUBMIT (pathsumbit) =================
+// ================= SUBMIT (pathsumbit) =================
+if (pathname === "/pathsumbit") {
+    return sendJSON(res, {
+        items: []
+    });
+}
+
+    
 //=============//string.sec//=========
 if (pathname === "/getstrings2.sec") {
 
