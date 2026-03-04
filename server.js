@@ -597,5 +597,15 @@ if (pathname === "/pathsumbit") {
         items: []
     });
 }
+// ================= FALLBACK =================
+return sendJSON(res, {
+    ok: true,
+    uri: pathname
+});
 
+});  // 👈 ĐÓNG createServer
+
+server.listen(PORT, () => {
+    console.log("Server running on port", PORT);
+});
 
