@@ -399,50 +399,76 @@ function getKey(){
     }
 //==========/////status.sec/////=========
 if (pathname === "/api/apikey/status.sec") {
+if (pathname === "/api/apikey/status.sec") {
 
     const apiKey = parsedUrl.query.api_key;
     const pubBase64 = parsedUrl.query.pub;
-
     const ua = req.headers["user-agent"] || "";
 
     if (!ua.includes("MToolMax-http")) {
-    return sendJSON(res, { error: "invalid ua" });
+        return sendJSON(res, { ok:false });
     }
 
     if (!apiKey || !pubBase64) {
-        return sendJSON(res, { error: "missing params" });
+        return sendJSON(res, { ok:false });
     }
 
     if (!database[apiKey] || database[apiKey].status !== "verified") {
-        return sendJSON(res, { error: "invalid key" });
+        return sendJSON(res, { ok:false });
     }
 
     try {
+
+        // ====== 1️⃣ RSA PUBLIC KEY ======
         const publicKey = crypto.createPublicKey({
             key: Buffer.from(pubBase64, "base64"),
             format: "der",
             type: "spki"
         });
 
-        const aesSecret = crypto.randomBytes(32);
+        // ====== 2️⃣ TẠO AES KEY ======
+        const aesKey = crypto.randomBytes(32);
 
-        const encrypted = crypto.publicEncrypt(
+        // ====== 3️⃣ PAYLOAD BÊN TRONG ======
+        const payload = JSON.stringify({
+            ok: true,
+            user_id: 123456,
+            username: "admin",
+            balance: 9999
+        });
+
+        // ====== 4️⃣ AES-GCM ENCRYPT ======
+        const iv = crypto.randomBytes(12);
+        const cipher = crypto.createCipheriv("aes-256-gcm", aesKey, iv);
+
+        let encryptedData = cipher.update(payload, "utf8");
+        encryptedData = Buffer.concat([encryptedData, cipher.final()]);
+
+        const tag = cipher.getAuthTag();
+
+        // ====== 5️⃣ RSA ENCRYPT AES KEY ======
+        const encryptedKey = crypto.publicEncrypt(
             {
                 key: publicKey,
                 padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
                 oaepHash: "sha1"
             },
-            aesSecret
+            aesKey
         );
 
+        // ====== 6️⃣ RESPONSE ĐÚNG FORMAT ======
         return sendJSON(res, {
-            ek: encrypted.toString("base64")
+            ok: true,
+            ek: encryptedKey.toString("base64"),
+            iv: iv.toString("base64"),
+            ct: encryptedData.toString("base64"),
+            tag: tag.toString("base64")
         });
 
     } catch (err) {
-        return sendJSON(res, { error: "encrypt fail" });
+        return sendJSON(res, { ok:false });
     }
-            }
+}
 
     // ================= KEY SEC =================
     
