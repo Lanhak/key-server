@@ -572,11 +572,11 @@ const finalCiphertext = Buffer.concat([encrypted, tag]);
         console.log("RSA ENCRYPT OK");
 
         return sendJSON(res, {
-            ok: true,
-            ek: encryptedKey.toString("base64"),
-            iv: iv.toString("base64"),
-            ct: encryptedData.toString("base64"),
-        });
+    ok: true,
+    ek: encryptedKey.toString("base64"),
+    iv: iv.toString("base64"),
+    ct: finalCiphertext.toString("base64")
+});
 
     } catch (err) {
         console.log("SEC ERROR:", err);
