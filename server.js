@@ -514,9 +514,16 @@ if (
         console.log("KEY NOT VERIFIED");
         return sendJSON(res, { ok:false });
     }
-    if (!record.expires_at) {
-    console.log("NO EXPIRES_AT");
-    return sendJSON(res, { ok:false });
+    if (record.status !== "verified") {
+    console.log("KEY NOT VERIFIED");
+    return sendJSON(res, { ok:false, message: "not_verified" });
+}
+
+// Nếu chưa có expire thì tự set 24h từ lúc tạo
+if (!record.expires_at || record.expires_at === 0) {
+    console.log("AUTO SET EXPIRE");
+    record.expires_at = record.created_at + 86400;
+    saveDB();
 }
 
 if (now() > record.expires_at) {
