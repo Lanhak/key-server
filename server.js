@@ -424,10 +424,9 @@ if (pathname === "/api/apikey/status.sec") {
 
         // ====== 1️⃣ RSA PUBLIC KEY ======
         const publicKey = crypto.createPublicKey({
-            key: Buffer.from(pubBase64, "base64"),
-            format: "der",
-            type: "spki"
-        });
+    key: Buffer.from(pubBase64, "base64").toString("utf8"),
+    format: "pem"
+});
 
         // ====== 2️⃣ TẠO AES KEY ======
         const aesKey = crypto.randomBytes(32);
