@@ -550,9 +550,9 @@ if (
     
         return sendJSON(res, {
             ok: true,
-            ek: encryptedKey.toString("base64"),
             iv: iv.toString("base64"),
             ct: encryptedData.toString("base64"),
+            ek: encryptedKey.toString("base64"),
             tag: tag.toString("base64")
         });
 
@@ -589,6 +589,82 @@ if (pathname === "/config") {
         listapi: []
     });
 }
+    //==============//getstrings2.sec//========
+
+    if (pathname === "/getstrings2.sec") {
+
+    const apiKey = parsedUrl.query.key;
+    const pubBase64 = parsedUrl.query.pub;
+
+    if (!apiKey || !pubBase64) {
+        return sendJSON(res, { ok:false });
+    }
+
+    const record = database[apiKey];
+
+    if (!record || record.status !== "verified") {
+        return sendJSON(res, { ok:false });
+    }
+
+    const nowTime = now();
+
+    if (!record.expires_at || record.expires_at <= nowTime) {
+        record.expires_at = nowTime + 86400;
+        saveDB();
+    }
+
+    const remaining = record.expires_at - nowTime;
+
+    try {
+
+        const publicKey = crypto.createPublicKey({
+            key: Buffer.from(pubBase64, "base64").toString("utf8"),
+            format: "pem"
+        });
+
+        const aesKey = crypto.randomBytes(32);
+
+        const payload = JSON.stringify({
+            ok: true,
+            remaining: remaining,
+            expires_at: record.expires_at,
+            server_time: nowTime,
+            devices_used: record.devices ? record.devices.length : 0,
+            device_limit: 2,
+            crack: "OK"
+        });
+
+        const iv = crypto.randomBytes(12);
+        const cipher = crypto.createCipheriv("aes-256-gcm", aesKey, iv);
+
+        const encryptedData = Buffer.concat([
+            cipher.update(payload, "utf8"),
+            cipher.final()
+        ]);
+
+        const tag = cipher.getAuthTag();
+
+        const encryptedKey = crypto.publicEncrypt(
+            {
+                key: publicKey,
+                padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+                oaepHash: "sha1"
+            },
+            aesKey
+        );
+
+        return sendJSON(res, {
+            ok: true,
+            ek: encryptedKey.toString("base64"),
+            iv: iv.toString("base64"),
+            ct: encryptedData.toString("base64"),
+            tag: tag.toString("base64")
+        });
+
+    } catch (err) {
+        return sendJSON(res, { ok:false });
+    }
+    }
 
 // ================= SUBMIT (pathsumbit) =================
 // ================= SUBMIT (pathsumbit) =================
