@@ -416,7 +416,6 @@ function getKey(){
     }
 //==========/////status.sec/////=========
 if (pathname === "/api/apikey/status.sec") {
-if (pathname === "/api/apikey/status.sec") {
 
     const apiKey = parsedUrl.query.api_key;
     const pubBase64 = parsedUrl.query.pub;
@@ -459,11 +458,9 @@ if (pathname === "/api/apikey/status.sec") {
             remaining: remaining,
             expires_at: record.expires_at,
             server_time: nowTime,
-
             user_id: 123456,
             username: "admin",
             balance: 9999,
-
             devices_used: record.devices ? record.devices.length : 0,
             devices_limit: 1
         });
@@ -495,10 +492,10 @@ if (pathname === "/api/apikey/status.sec") {
             tag: tag.toString("base64")
         });
 
-    } catch {
+    } catch (err) {
         return sendJSON(res, { ok:false });
     }
-            }
+}
     // ================= KEY SEC =================
     
 if (
