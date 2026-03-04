@@ -548,7 +548,7 @@ if (
             user_id: 123456,
             username: "admin",
             devices_used: 1,
-            devices_limit: 2,
+            device_limit: 2,
             balance: 9999
         });
 
