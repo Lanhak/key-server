@@ -99,7 +99,6 @@ const server = http.createServer((req, res) => {
 // ================= SERVER TIME =================
 if (pathname === "/server-time") {
     return sendJSON(res, {
-        success: true,
         server_time: Math.floor(Date.now() / 1000)
     });
 }
