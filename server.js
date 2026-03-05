@@ -537,10 +537,14 @@ if (pathname === "/api/apikey/status.sec") {
 
     const nowTime = now();
 
-    if (!record.expires_at || record.expires_at <= nowTime) {
-        record.expires_at = nowTime + 86400;
-        saveDB();
-    }
+    if (!record.expires_at) {
+    record.expires_at = nowTime + 86400;
+    saveDB();
+}
+
+if (record.expires_at <= nowTime) {
+    return sendJSON(res, { ok:false, reason:"expired" });
+}
 
     const remaining = record.expires_at - nowTime;
 
