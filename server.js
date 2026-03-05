@@ -405,13 +405,34 @@ LanHak2k7 Channel
 </div>
 
 <script>
-function updateClock(){
-    const now = new Date();
-    document.getElementById("clock").innerHTML =
-        "🕒 " + now.toLocaleString();
+const KEY_DURATION = 24 * 60 * 60 * 1000; // 24h (ms)
+const startTime = new Date().getTime();
+const endTime = startTime + KEY_DURATION;
+
+function updateCountdown(){
+    const now = new Date().getTime();
+    const distance = endTime - now;
+
+    if(distance <= 0){
+        document.getElementById("clock").innerHTML = "⛔ Key đã hết hạn";
+        clearInterval(timer);
+        return;
+    }
+
+    const hours = Math.floor((distance / (1000 * 60 * 60)));
+    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+    const format = 
+        String(hours).padStart(2, '0') + ":" +
+        String(minutes).padStart(2, '0') + ":" +
+        String(seconds).padStart(2, '0');
+
+    document.getElementById("clock").innerHTML = "⏳ " + format;
 }
-setInterval(updateClock,1000);
-updateClock();
+
+const timer = setInterval(updateCountdown,1000);
+updateCountdown();
 </script>
 
 </body>
