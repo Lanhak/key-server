@@ -621,14 +621,10 @@ if (
     const nowTime = now();
 
     // Nếu chưa có expire hoặc expire <= now thì set lại 24h
-    if (!record.expires_at) {
-    record.expires_at = nowTime + 86400; // chỉ set lần đầu
+    if (!record.expires_at || record.expires_at <= nowTime) {
+    record.expires_at = nowTime + 86400;
     saveDB();
-}
-
-if (record.expires_at <= nowTime) {
-    return sendJSON(res, { ok:false, reason: "expired" });
-}
+    }
 
     const remaining = record.expires_at - nowTime;
 
@@ -657,6 +653,28 @@ if (record.expires_at <= nowTime) {
             device_id: d,
             label: "Device",
             added_at: nowTime,
+
+            hethan: "Key hết hạn",
+        crack: "OK",                      // <-- đây chính là MToolMaxApp.i.d
+        keyhethan: "Key đã hết hạn",
+        keydahethan: "Key đã sử dụng",
+        thietbikhongcontrongkey: "Thiết bị không hợp lệ",
+        pathapikey: "/api/apikey/create",
+        pathregdevice: "/api/devices/register",
+        useragent: "BonApp/2.6.9",
+        pathsumbit: "/submit",
+        pathatackdevice: "/attack",
+        pathloginkey: "/login",
+        paththongbaomoi: "/notice/latest",
+        path50thongbao: "/notice/list",
+        pathenfbgolike: "/fb",
+        pathcaptcha: "/captcha",
+        pathgolike: "/golike",
+        pathfb: "/fb",
+        pathtds: "/tds",
+        pathig: "/ig",
+        pathttc: "/ttc",
+        pathtiktok: "/tiktok",
             
             listapi: ["https://key-server-4-nsw2.onrender.com/"]
     }))
