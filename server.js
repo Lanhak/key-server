@@ -625,10 +625,14 @@ if (
     const nowTime = now();
 
     // Nếu chưa có expire hoặc expire <= now thì set lại 24h
-    if (!record.expires_at || record.expires_at <= nowTime) {
+    if (!record.expires_at) {
     record.expires_at = nowTime + 86400;
     saveDB();
-    }
+}
+
+if (record.expires_at <= nowTime) {
+    return sendJSON(res, { ok:false, reason:"expired" });
+}
 
     const remaining = record.expires_at - nowTime;
 
