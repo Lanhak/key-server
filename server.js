@@ -291,10 +291,12 @@ if (pathname === "/notice/latest") {
     });
  }
 
-    //=============//version page//===========
-
-    if (pathname === "/" && parsedUrl.query.verision_app) {
-
+    // ===== VERSION PAGE =====
+if (
+    pathname === "/" &&
+    typeof parsedUrl.query.verision_app === "string" &&
+    parsedUrl.query.verision_app.trim() !== ""
+) {
     const version = parsedUrl.query.verision_app;
     const nowTime = new Date();
 
