@@ -492,41 +492,18 @@ if (
         const payload = JSON.stringify({
             ok: true,
             remaining: remaining,
+            
+            key: apiKey,
             expires_at: record.expires_at,
-            server_time: nowTime,
-            user_id: 123456,
-            username: "admin",
-            devices_used: 1,
             device_limit: 2,
-            hethan: "Key hết hạn",
-            crack: "OK",
-            keyhethan: "Key đã hết hạn",
-            keydahethan: "Key đã sử dụng",
-            thietbikhongcontrongkey: "Thiết bị không hợp lệ",
-
-            pathapikey: "/api/apikey/create",
-            pathregdevice: "/api/devices/register",
-            pathsumbit: "/submit",
-            paththongbaomoi: "/notice/latest",
-            path50thongbao: "/notices",
-
-            pathatackdevice: "/attack",
-            pathloginkey: "/login",
-   
-            pathenfbgolike: "/fb",
-            pathcaptcha: "/captcha",
-            pathgolike: "/golike",
-            pathfb: "/fb",
-            pathtds: "/tds",
-            pathig: "/ig",
-            pathttc: "/ttc",
-            pathtiktok: "/tiktok",
-
-            useragent: "MToolMax-http",
-
-            listapi: [],
-            balance: 9999
-        });
+            devices_used: record.devices ? record.devices.length : 0,
+            is_expired: false,
+            devices: (record.devices || []).map(d => ({
+            device_id: d,
+            label: "Device",
+            added_at: nowTime
+    }))
+});
 
         const iv = crypto.randomBytes(12);
         const cipher = crypto.createCipheriv("aes-256-gcm", aesKey, iv);
