@@ -414,8 +414,8 @@ updateClock();
 
 </body>
 </html>
-);
-}
+`);
+   }
     // ================= TRANG CHỦ =================
     if (pathname === "/") {
 
