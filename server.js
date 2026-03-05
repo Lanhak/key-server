@@ -28,7 +28,7 @@ function verifySignature(secretB64, dataString, signature) {
     return expected === signature;
 }
 
-console.log("FULL REQUEST:", req.method, req.url);
+
 // ================= LOAD DATABASE =================
 try {
     if (fs.existsSync(DB_FILE)) {
