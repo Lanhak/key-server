@@ -674,7 +674,7 @@ if (
         pathig: "/ig",
         pathttc: "/ttc",
         pathtiktok: "/tiktok",
-        listapi: [https://key-server-4-nsw2.onrender.com/]
+        listapi: ["https://key-server-4-nsw2.onrender.com/"]
     }))
 });
 
