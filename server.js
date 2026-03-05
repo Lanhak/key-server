@@ -290,6 +290,132 @@ if (pathname === "/notice/latest") {
         created_at: Date.now()
     });
  }
+
+    //=============//version page//===========
+
+    if (pathname === "/" && parsedUrl.query.verision_app) {
+
+    const version = parsedUrl.query.verision_app;
+    const nowTime = new Date();
+
+    res.writeHead(200, { "Content-Type": "text/html; charset=UTF-8" });
+
+    return res.end(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>BIBON SERVER</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{
+    margin:0;
+    background:linear-gradient(135deg,#000,#111,#000);
+    color:#00ffcc;
+    font-family:monospace;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+.container{
+    background:#0a0a0a;
+    padding:30px;
+    border-radius:15px;
+    width:95%;
+    max-width:500px;
+    text-align:center;
+    box-shadow:0 0 25px #00ffcc55;
+}
+h1{
+    font-size:28px;
+    color:#00ffcc;
+    text-shadow:0 0 10px #00ffcc;
+}
+.info{
+    margin-top:15px;
+    font-size:14px;
+}
+.time{
+    font-size:18px;
+    margin-top:10px;
+    color:#00ff99;
+}
+.link{
+    margin-top:15px;
+}
+a{
+    color:#00ffcc;
+    text-decoration:none;
+    font-weight:bold;
+}
+a:hover{
+    color:#ffffff;
+}
+.banner{
+    font-size:22px;
+    margin-bottom:10px;
+    color:#ff00ff;
+    text-shadow:0 0 15px #ff00ff;
+}
+.footer{
+    margin-top:20px;
+    font-size:12px;
+    opacity:0.7;
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="banner">🔥 BIBON 🔥</div>
+
+<h1>Key Server Status</h1>
+
+<div class="info">
+Version App: <b>${version}</b>
+</div>
+
+<div class="time" id="clock"></div>
+
+<div class="info">
+⏳ Thời gian key: 24h kể từ lúc kích hoạt
+</div>
+
+<div class="link">
+📱 Zalo: 
+<a href="https://zalo.me/g/ognqig191" target="_blank">
+https://zalo.me/g/ognqig191
+</a>
+</div>
+
+<div class="link">
+▶ YouTube:
+<a href="https://youtube.com/@lanhak2k7?si=hyh-sxX-z1FZhPqs" target="_blank">
+LanHak2k7 Channel
+</a>
+</div>
+
+<div class="footer">
+© ${new Date().getFullYear()} BIBON SYSTEM
+</div>
+
+</div>
+
+<script>
+function updateClock(){
+    const now = new Date();
+    document.getElementById("clock").innerHTML =
+        "🕒 " + now.toLocaleString();
+}
+setInterval(updateClock,1000);
+updateClock();
+</script>
+
+</body>
+</html>
+);
+}
     // ================= TRANG CHỦ =================
     if (pathname === "/") {
 
@@ -363,254 +489,6 @@ function getKey(){
 </html>
 `);
     }
-
-// ================= VERSION PAGE =================
-if (pathname === "/" && parsedUrl.query.verision_app) {
-
-    const version = parsedUrl.query.verision_app;
-    const nowTime = new Date();
-
-    res.writeHead(200, { "Content-Type": "text/html; charset=UTF-8" });
-
-    return res.end(`
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>BIBON SERVER</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body{
-    margin:0;
-    background:linear-gradient(135deg,#000,#111,#000);
-    color:#00ffcc;
-    font-family:monospace;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
-}
-.container{
-    background:#0a0a0a;
-    padding:30px;
-    border-radius:15px;
-    width:95%;
-    max-width:500px;
-    text-align:center;
-    box-shadow:0 0 25px #00ffcc55;
-}
-h1{
-    font-size:28px;
-    color:#00ffcc;
-    text-shadow:0 0 10px #00ffcc;
-}
-.info{
-    margin-top:15px;
-    font-size:14px;
-}
-.time{
-    font-size:18px;
-    margin-top:10px;
-    color:#00ff99;
-}
-.link{
-    margin-top:15px;
-}
-a{
-    color:#00ffcc;
-    text-decoration:none;
-    font-weight:bold;
-}
-a:hover{
-    color:#ffffff;
-}
-.banner{
-    font-size:22px;
-    margin-bottom:10px;
-    color:#ff00ff;
-    text-shadow:0 0 15px #ff00ff;
-}
-.footer{
-    margin-top:20px;
-    font-size:12px;
-    opacity:0.7;
-}
-</style>
-</head>
-<body>
-<div class="container">
-
-<div class="banner">🔥 BIBON 🔥</div>
-
-<h1>Key Server Status</h1>
-
-<div class="info">
-Version App: <b>${version}</b>
-</div>
-
-<div class="time" id="clock"></div>
-
-<div class="info">
-⏳ Thời gian key: 24h kể từ lúc kích hoạt
-</div>
-
-<div class="link">
-📱 Zalo: 
-<a href="https://zalo.me/g/ognqig191" target="_blank">
-https://zalo.me/g/ognqig191
-</a>
-</div>
-
-<div class="link">
-▶ YouTube:
-<a href="https://youtube.com/@lanhak2k7?si=hyh-sxX-z1FZhPqs" target="_blank">
-LanHak2k7 Channel
-</a>
-</div>
-
-<div class="footer">
-© ${new Date().getFullYear()} BIBON SYSTEM
-</div>
-
-</div>
-
-<script>
-function updateClock(){
-    const now = new Date();
-    document.getElementById("clock").innerHTML =
-        "🕒 " + now.toLocaleString();
-}
-setInterval(updateClock,1000);
-updateClock();
-</script>
-
-</body>
-</html>
-`);
-}// ================= VERSION PAGE =================
-if (pathname === "/" && parsedUrl.query.verision_app) {
-
-    const version = parsedUrl.query.verision_app;
-    const nowTime = new Date();
-
-    res.writeHead(200, { "Content-Type": "text/html; charset=UTF-8" });
-
-    return res.end(`
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>BIBON SERVER</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body{
-    margin:0;
-    background:linear-gradient(135deg,#000,#111,#000);
-    color:#00ffcc;
-    font-family:monospace;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
-}
-.container{
-    background:#0a0a0a;
-    padding:30px;
-    border-radius:15px;
-    width:95%;
-    max-width:500px;
-    text-align:center;
-    box-shadow:0 0 25px #00ffcc55;
-}
-h1{
-    font-size:28px;
-    color:#00ffcc;
-    text-shadow:0 0 10px #00ffcc;
-}
-.info{
-    margin-top:15px;
-    font-size:14px;
-}
-.time{
-    font-size:18px;
-    margin-top:10px;
-    color:#00ff99;
-}
-.link{
-    margin-top:15px;
-}
-a{
-    color:#00ffcc;
-    text-decoration:none;
-    font-weight:bold;
-}
-a:hover{
-    color:#ffffff;
-}
-.banner{
-    font-size:22px;
-    margin-bottom:10px;
-    color:#ff00ff;
-    text-shadow:0 0 15px #ff00ff;
-}
-.footer{
-    margin-top:20px;
-    font-size:12px;
-    opacity:0.7;
-}
-</style>
-</head>
-<body>
-<div class="container">
-
-<div class="banner">🔥 BIBON 🔥</div>
-
-<h1>Key Server Status</h1>
-
-<div class="info">
-Version App: <b>${version}</b>
-</div>
-
-<div class="time" id="clock"></div>
-
-<div class="info">
-⏳ Thời gian key: 24h kể từ lúc kích hoạt
-</div>
-
-<div class="link">
-📱 Zalo: 
-<a href="https://zalo.me/g/ognqig191" target="_blank">
-https://zalo.me/g/ognqig191
-</a>
-</div>
-
-<div class="link">
-▶ YouTube:
-<a href="https://youtube.com/@lanhak2k7?si=hyh-sxX-z1FZhPqs" target="_blank">
-LanHak2k7 Channel
-</a>
-</div>
-
-<div class="footer">
-© ${new Date().getFullYear()} BIBON SYSTEM
-</div>
-
-</div>
-
-<script>
-function updateClock(){
-    const now = new Date();
-    document.getElementById("clock").innerHTML =
-        "🕒 " + now.toLocaleString();
-}
-setInterval(updateClock,1000);
-updateClock();
-</script>
-
-</body>
-</html>
-`);
-}
 
     
 //==========/////status.sec/////=========
