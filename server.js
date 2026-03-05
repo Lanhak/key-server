@@ -406,9 +406,7 @@ LanHak2k7 Channel
 
 <script>
 const KEY_DURATION = 24 * 60 * 60 * 1000; // 24h (ms)
-const startTime = new Date().getTime();
-const endTime = startTime + KEY_DURATION;
-
+const endTime = ${record.expires_at * 1000};
 function updateCountdown(){
     const now = new Date().getTime();
     const distance = endTime - now;
