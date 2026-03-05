@@ -724,18 +724,23 @@ if (record.expires_at <= nowTime) {
 if (pathname === "/config") {
     return sendJSON(res, {
         hethan: "Key hết hạn",
-        crack: "OK",                      // <-- đây chính là MToolMaxApp.i.d
+        crack: "OK",
         keyhethan: "Key đã hết hạn",
         keydahethan: "Key đã sử dụng",
         thietbikhongcontrongkey: "Thiết bị không hợp lệ",
-        pathapikey: "/api/apikey/create",
+
+        pathapikey: "/api/apikey/status.sec",
         pathregdevice: "/api/devices/register",
-        useragent: "BonApp/2.6.9",
-        pathsumbit: "/submit",
+
+        useragent: "MToolMax-http",
+
+        pathsumbit: "/pathsumbit",
         pathatackdevice: "/attack",
         pathloginkey: "/login",
+
         paththongbaomoi: "/notice/latest",
-        path50thongbao: "/notice/list",
+        path50thongbao: "/notices",
+
         pathenfbgolike: "/fb",
         pathcaptcha: "/captcha",
         pathgolike: "/golike",
@@ -744,7 +749,8 @@ if (pathname === "/config") {
         pathig: "/ig",
         pathttc: "/ttc",
         pathtiktok: "/tiktok",
-        listapi: []
+
+        listapi: ["https://key-server-4-nsw2.onrender.com/"]
     });
 }
     //==============//getstrings2.sec//========
