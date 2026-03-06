@@ -318,6 +318,8 @@ key:newKey,
 expires_at:expires
 });
 });
+		return;
+	}
     // ================= KEY CHECK (APP DÙNG) =================
 if (
     pathname.startsWith("/keys/") &&
