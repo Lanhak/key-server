@@ -106,16 +106,22 @@ if (pathname === "/server-time") {
 // ================= CREATE KEY =================
 if (pathname === "/api/apikey/create") {
 
-    const key = generateKey(); // MTOOLMAX-XXXXXX
+    const deviceId = parsedUrl.query.device_id;
+
+    if(!deviceId){
+        return sendJSON(res,{error:"no device_id"});
+    }
+
+    const key = generateKey();
 
     database[key] = {
         key,
-        status: "pending",              // ⚠ chưa verified
+        device_id: deviceId,
+        status: "pending",
         expires_at: 0,
-        devices: [],
         created_at: now()
     };
-
+    
     saveDB();
 
     const callbackUrl =
@@ -247,11 +253,9 @@ if (
             return sendJSON(res, { ok:false });
         }
 
-        if (!record.devices) record.devices = [];
-
-        if (!record.devices.includes(device_id)) {
-            record.devices.push(device_id);
-        }
+        if(record.device_id !== device_id){
+    return sendJSON(res,{ok:false,message:"device invalid"});
+}
 
         saveDB();
 
@@ -384,6 +388,11 @@ if (
         .replace(".sec", "");
 
     const pubBase64 = parsedUrl.query.pub;
+    const deviceId = parsedUrl.query.device_id;
+
+if(record.device_id !== deviceId){
+    return sendJSON(res,{ok:false});
+}
 
     if (!pubBase64) {
         return sendJSON(res, { ok:false });
@@ -423,13 +432,14 @@ if (
             
             key: apiKey,
             expires_at: record.expires_at,
-            device_limit: 2,
-            devices_used: record.devices ? record.devices.length : 0,
+           devices_used: 1,
+           device_limit: 1
             is_expired: false,
-            devices: (record.devices || []).map(d => ({
-            device_id: d,
-            label: "Device",
-            added_at: nowTime
+            devices: [{
+    device_id: record.device_id,
+    label:"Device",
+    added_at: nowTime
+}]
     }))
 });
 
@@ -728,4 +738,3 @@ server.listen(PORT, "0.0.0.0", () => {
 console.log("Server running on port", PORT)
 
 })
-
