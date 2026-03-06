@@ -317,6 +317,7 @@ device_id:deviceId,
 key:newKey,
 expires_at:expires
 });
+});
     // ================= KEY CHECK (APP DÙNG) =================
 if (
     pathname.startsWith("/keys/") &&
