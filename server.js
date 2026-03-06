@@ -263,32 +263,60 @@ const deviceId =
 parsed.device_id ||
 crypto.randomBytes(16).toString("hex");
 
-if(!database.devices[deviceId]){
+if(!database.devices) database.devices={};
+if(!database.keys) database.keys={};
 
-database.devices[deviceId]={
-device_id:deviceId,
-key:null,
-created_at:now(),
-last_seen:now()
-};
+let device = database.devices[deviceId];
+const DAY = 86400;
 
-}else{
+if(device){
 
-database.devices[deviceId].last_seen=now();
+device.last_seen = now();
 
-}
+let keyData = database.keys[device.key];
+
+if(keyData && keyData.expires_at > now()){
 
 saveDB();
 
 return sendJSON(res,{
 ok:true,
-device_id:deviceId
+device_id:deviceId,
+key:device.key,
+expires_at:keyData.expires_at
 });
 
-});
-
-return;
 }
+
+}
+
+const newKey = "MTOOLMAX-" + crypto.randomBytes(6).toString("hex").toUpperCase();
+
+const created = now();
+const expires = created + DAY;
+
+database.devices[deviceId]={
+device_id:deviceId,
+key:newKey,
+created_at:created,
+last_seen:created
+};
+
+database.keys[newKey]={
+key:newKey,
+device_id:deviceId,
+created_at:created,
+expires_at:expires
+};
+
+saveDB();
+
+return sendJSON(res,{
+ok:true,
+device_id:deviceId,
+key:newKey,
+expires_at:expires
+});
     // ================= KEY CHECK (APP DÙNG) =================
 if (
     pathname.startsWith("/keys/") &&
