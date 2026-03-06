@@ -322,9 +322,10 @@ const server = http.createServer((req, res) => {
 
       return sendJSON(res, {
         ok: true,
-        ek: encryptedKey.toString("base64"),
+        
         iv: iv.toString("base64"),
         ct: encryptedData.toString("base64"),
+        ek: encryptedKey.toString("base64"),
         tag: tag.toString("base64"),
       });
     } catch {
