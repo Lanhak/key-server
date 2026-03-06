@@ -10,6 +10,7 @@ const LINK4M_TOKEN = "6899fc9d171a1f07277dde22";
 const KEY_PAGE = "https://lanhakk.blogspot.com/2026/01/lanh-ak.html";
 const DB_FILE = "database.json";
 
+let database = {};
 
 // ================= HMAC SIGN =================
 function createSignature(secretB64, dataString) {
@@ -27,105 +28,61 @@ function verifySignature(secretB64, dataString, signature) {
     return expected === signature;
 }
 
-//============KHAI BÁO//=============
-function now(){
-return Math.floor(Date.now()/1000);
-}
-
-function saveDB(){
-fs.writeFileSync(DB_FILE,JSON.stringify(database,null,2));
-}
-
-function normalize(path){
-return path.replace(/\/+/g,"/");
-}
-
-function sendJSON(res,obj){
-res.writeHead(200,{"Content-Type":"application/json"});
-res.end(JSON.stringify(obj));
-}
-
-function generateKey(){
-const chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-let r="";
-for(let i=0;i<6;i++){
-r+=chars.charAt(Math.floor(Math.random()*chars.length));
-}
-return "MTOOLMAX-"+r;
-}
-function shortenLink(longUrl, callback){
-
-const api =
-`https://link4m.co/api-shorten/v2?api=${LINK4M_TOKEN}&url=${encodeURIComponent(longUrl)}`;
-
-https.get(api,(resp)=>{
-
-let data="";
-
-resp.on("data",chunk=>data+=chunk);
-
-resp.on("end",()=>{
-
-try{
-const json=JSON.parse(data);
-callback(json);
-}catch{
-callback(null);
-}
-
-});
-
-}).on("error",()=>callback(null));
-
-}
 
 // ================= LOAD DATABASE =================
-let database = {
-  keys:{},
-  devices:{},
-  notices:[]
-};
-
-try{
-if(fs.existsSync(DB_FILE)){
-const raw = fs.readFileSync(DB_FILE,"utf8");
-
-if(raw.trim().length>0){
-database = JSON.parse(raw);
-}
-}
-}catch{
-database={keys:{},devices:{},notices:[]};
+try {
+    if (fs.existsSync(DB_FILE)) {
+        const raw = fs.readFileSync(DB_FILE);
+        database = raw.length ? JSON.parse(raw) : {};
+    }
+} catch {
+    database = {};
 }
 
-//=======// key hết hạn //=========
-function cleanupExpiredKeys(){
-
-const t = now();
-
-for(const k in database.keys){
-
-const r = database.keys[k];
-
-if(r.expires_at <= t){
-
-const device = database.devices[r.device_id];
-
-if(device && device.key === k){
-device.key=null;
+function saveDB() {
+    fs.writeFileSync(DB_FILE, JSON.stringify(database, null, 2));
 }
 
-delete database.keys[k];
-
+function now() {
+    return Math.floor(Date.now() / 1000);
 }
 
+function normalize(path) {
+    return path.replace(/\/+/g, "/");
 }
 
-saveDB();
-
+function sendJSON(res, obj) {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(obj));
 }
 
-setInterval(cleanupExpiredKeys,60000);
+function generateKey() {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let random = "";
+    for (let i = 0; i < 6; i++) {
+        random += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return "MTOOLMAX-" + random;
+}
+
+function shortenLink(longUrl, callback) {
+    const apiUrl =
+        `https://link4m.co/api-shorten/v2?api=${LINK4M_TOKEN}&url=${encodeURIComponent(longUrl)}`;
+
+    https.get(apiUrl, (resp) => {
+        let data = "";
+        resp.on("data", chunk => data += chunk);
+        resp.on("end", () => {
+            try {
+                const json = JSON.parse(data);
+                callback(json);
+            } catch {
+                callback(null);
+            }
+        });
+    }).on("error", () => callback(null));
+}
+
 // ================= SERVER =================
 const server = http.createServer((req, res) => {
 
@@ -147,60 +104,37 @@ if (pathname === "/server-time") {
 }
 
 // ================= CREATE KEY =================
-if(pathname==="/api/apikey/create"){
+if (pathname === "/api/apikey/create") {
 
-if(req.method !== "GET"){
-return sendJSON(res,{ok:false});
-}
+    const key = generateKey(); // MTOOLMAX-XXXXXX
 
-const deviceId = parsedUrl.query.device_id;
+    database[key] = {
+        key,
+        status: "pending",              // ⚠ chưa verified
+        expires_at: 0,
+        devices: [],
+        created_at: now()
+    };
 
-if(!deviceId){
-return sendJSON(res,{ok:false});
-}
+    saveDB();
 
-const device = database.devices[deviceId];
+    const callbackUrl =
+        `${BASE_URL}/api/apikey/callback?key=${key}`;
 
-if(!device){
-return sendJSON(res,{ok:false});
-}
+    shortenLink(callbackUrl, (result) => {
 
-if(device.key){
+        if (!result || result.status === "error") {
+            return sendJSON(res, { error: "Link4m error" });
+        }
 
-const r = database.keys[device.key];
+        return sendJSON(res, {
+            shortened_link:
+                result.shortenedUrl ||
+                result.shortened_url
+        });
+    });
 
-if(r && r.expires_at > now()){
-return sendJSON(res,{
-ok:false,
-message:"device already has key"
-});
-}
-
-device.key=null;
-
-}
-
-const key = generateKey();
-const created = now();
-
-database.keys[key]={
-key:key,
-device_id:deviceId,
-status:"verified",
-created_at:created,
-expires_at:created+86400
-};
-
-device.key = key;
-
-saveDB();
-
-return sendJSON(res,{
-ok:true,
-key:key,
-expires_at:created+86400
-});
-
+    return;
 }
     // ================= CALLBACK VERIFY =================
 if (pathname === "/api/apikey/callback") {
@@ -210,7 +144,7 @@ if (pathname === "/api/apikey/callback") {
     console.log("KEY:", key);
     console.log("DATABASE:", database);
 
-    const record = database.keys[key];
+    const record = database[key];
 
     if (!record) {
         return res.end("Key not found");
@@ -233,48 +167,54 @@ saveDB();
 }
 
     // ================= DEVICE REGISTER =================
-   if (pathname === "/api/devices/register" && req.method === "POST") {
+    if (pathname === "/api/devices/register" && req.method === "POST") {
 
-let body="";
-req.on("data",chunk=>body+=chunk);
+    let body = "";
+    req.on("data", chunk => body += chunk);
 
-req.on("end",()=>{
+    req.on("end", () => {
 
-let parsed={};
-try{ parsed=JSON.parse(body); }catch{}
+        let parsed;
+        try { parsed = JSON.parse(body); } catch { parsed = {}; }
 
-const deviceId =
-parsed.device_id ||
-crypto.randomBytes(16).toString("hex");
+        const deviceId =
+            parsed.device_id ||
+            crypto.randomBytes(16).toString("hex");
 
-if(!database.devices) database.devices={};
+        const timeISO = new Date().toISOString();
 
-if(!database.devices[deviceId]){
+        // 🔐 secret random 32 byte
+        const secretBytes = crypto.randomBytes(32);
+        const secretB64 = secretBytes.toString("base64");
 
-database.devices[deviceId]={
-device_id:deviceId,
-key:null,
-created_at:now(),
-last_seen:now()
-};
+        if (!database.__devices) {
+            database.__devices = {};
+        }
 
-}else{
+        database.__devices[deviceId] = {
+            device_id: deviceId,
+            secret: secretB64,
+            created_at: now(),
+            last_seen: now()
+        };
 
-database.devices[deviceId].last_seen = now();
+        saveDB();
 
-}
+        return sendJSON(res, {
+            ok: true,
+            device_id: deviceId,
+            client_secret_b64: secretB64,
+            created_at: timeISO,
+            last_seen: timeISO,
+            secret_rotated_at: timeISO
+        });
+    });
 
-saveDB();
+    return;
+    }
 
-return sendJSON(res,{
-ok:true,
-device_id:deviceId
-});
+    // ================= KEY CHECK (APP DÙNG) =================
 
-});
-
-return;
-}
     // ================= KEY CHECK (APP DÙNG) =================
 if (
     pathname.startsWith("/keys/") &&
@@ -302,7 +242,7 @@ if (
             return sendJSON(res, { ok:false, message:"No device_id" });
         }
 
-        const record = database.keys[apiKey];
+        const record = database[apiKey];
         if (!record) {
             return sendJSON(res, { ok:false });
         }
@@ -312,6 +252,7 @@ if (
         if (!record.devices.includes(device_id)) {
             record.devices.push(device_id);
         }
+
         saveDB();
 
         return sendJSON(res, {
@@ -348,8 +289,8 @@ if (pathname === "/notice/latest") {
         versionName: "2.6.9",
         created_at: Date.now()
     });
- }
- 
+    }
+
 //==========/////status.sec/////=========
 if (pathname === "/api/apikey/status.sec") {
 
@@ -365,7 +306,7 @@ if (pathname === "/api/apikey/status.sec") {
         return sendJSON(res, { ok:false });
     }
 
-    const record = database.keys[apiKey];
+    const record = database[apiKey];
 
     if (!record || record.status !== "verified") {
         return sendJSON(res, { ok:false });
@@ -434,45 +375,35 @@ if (pathname === "/api/apikey/status.sec") {
 }
     // ================= KEY SEC =================
     
-if(
-pathname.startsWith("/keys/") &&
-pathname.endsWith(".sec")
-){
+if (
+    pathname.startsWith("/keys/") &&
+    pathname.endsWith(".sec")
+) {
+    const apiKey = pathname
+        .replace("/keys/", "")
+        .replace(".sec", "");
 
-const apiKey = pathname
-.replace("/keys/","")
-.replace(".sec","");
+    const pubBase64 = parsedUrl.query.pub;
 
-const deviceId = parsedUrl.query.device_id;
-const pubBase64 = parsedUrl.query.pub;
+    if (!pubBase64) {
+        return sendJSON(res, { ok:false });
+    }
 
-if(!deviceId || !pubBase64){
-return sendJSON(res,{ok:false});
-}
+    const record = database[apiKey];
 
-const record = database.keys[apiKey];
+    if (!record || record.status !== "verified") {
+        return sendJSON(res, { ok:false });
+    }
 
-if(!record || record.status!=="verified"){
-return sendJSON(res,{ok:false});
-}
+    const nowTime = now();
 
-if(record.device_id !== deviceId){
-return sendJSON(res,{
-ok:false,
-message:"device mismatch"
-});
-}
+    // Nếu chưa có expire hoặc expire <= now thì set lại 24h
+    if (!record.expires_at || record.expires_at <= nowTime) {
+        record.expires_at = nowTime + 86400;
+        saveDB();
+    }
 
-const nowTime = now();
-
-if(record.expires_at <= nowTime){
-return sendJSON(res,{
-ok:false,
-message:"key expired"
-});
-}
-
-const remaining = record.expires_at - nowTime;
+    const remaining = record.expires_at - nowTime;
 
     if (remaining <= 0) {
         return sendJSON(res, { ok:false });
@@ -536,9 +467,6 @@ const remaining = record.expires_at - nowTime;
         return sendJSON(res, { ok:false });
     }
 }                       
-
-
-
     // ================= APP CONFIG =================
 if (pathname === "/config") {
     return sendJSON(res, {
@@ -577,7 +505,7 @@ if (pathname === "/config") {
         return sendJSON(res, { ok:false });
     }
 
-    const record = database.keys[apiKey];
+    const record = database[apiKey];
 
     if (!record || record.status !== "verified") {
         return sendJSON(res, { ok:false });
@@ -649,10 +577,7 @@ if (pathname === "/pathsumbit") {
     return sendJSON(res, {
         items: []
     });
-}
-
-
-
+            }
 
 
 // ================= VERSION PAGE =================
