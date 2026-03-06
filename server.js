@@ -17,7 +17,7 @@ function createSignature(secretB64, dataString) {
     const secret = Buffer.from(secretB64, "base64");
 
     return crypto
-        .createHmac("sha256", secret)
+        .createHmac("sha1", secret)
         .update(dataString, "utf8")
         .digest("base64");
 }
