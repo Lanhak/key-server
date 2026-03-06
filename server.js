@@ -148,8 +148,8 @@ if (pathname === "/server-time") {
 
 // ================= CREATE KEY =================
 if(pathname==="/api/apikey/create"){
-	
-	if(req.method !== "GET"){
+
+if(req.method !== "GET"){
 return sendJSON(res,{ok:false});
 }
 
@@ -176,12 +176,11 @@ message:"device already has key"
 });
 }
 
-device.key = null;
+device.key=null;
 
 }
 
 const key = generateKey();
-
 const created = now();
 
 database.keys[key]={
@@ -192,31 +191,17 @@ created_at:created,
 expires_at:created+86400
 };
 
-device.key=key;
+device.key = key;
 
 saveDB();
 
-
-const callbackUrl =
-`${BASE_URL}/api/apikey/callback?key=${key}`;
-
-shortenLink(callbackUrl,(result)=>{
-
-if(!result){
-return sendJSON(res,{ok:false});
-}
-
 return sendJSON(res,{
-shortened_link:
-result.shortenedUrl||
-result.shortened_url
+ok:true,
+key:key,
+expires_at:created+86400
 });
 
-});
-
-return;
 }
-
     // ================= CALLBACK VERIFY =================
 if (pathname === "/api/apikey/callback") {
 
@@ -248,78 +233,48 @@ saveDB();
 }
 
     // ================= DEVICE REGISTER =================
-    if (pathname === "/api/devices/register" && req.method === "POST") {
+   if (pathname === "/api/devices/register" && req.method === "POST") {
 
 let body="";
-
 req.on("data",chunk=>body+=chunk);
 
 req.on("end",()=>{
 
-let parsed;
-try{parsed=JSON.parse(body)}catch{parsed={}};
+let parsed={};
+try{ parsed=JSON.parse(body); }catch{}
 
 const deviceId =
 parsed.device_id ||
 crypto.randomBytes(16).toString("hex");
 
 if(!database.devices) database.devices={};
-if(!database.keys) database.keys={};
 
-let device = database.devices[deviceId];
-const DAY = 86400;
-
-if(device){
-
-device.last_seen = now();
-
-let keyData = database.keys[device.key];
-
-if(keyData && keyData.expires_at > now()){
-
-saveDB();
-
-return sendJSON(res,{
-ok:true,
-device_id:deviceId,
-key:device.key,
-expires_at:keyData.expires_at
-});
-
-}
-
-}
-
-const newKey = "MTOOLMAX-" + crypto.randomBytes(6).toString("hex").toUpperCase();
-
-const created = now();
-const expires = created + DAY;
+if(!database.devices[deviceId]){
 
 database.devices[deviceId]={
 device_id:deviceId,
-key:newKey,
-created_at:created,
-last_seen:created
+key:null,
+created_at:now(),
+last_seen:now()
 };
 
-database.keys[newKey]={
-key:newKey,
-device_id:deviceId,
-created_at:created,
-expires_at:expires
-};
+}else{
+
+database.devices[deviceId].last_seen = now();
+
+}
 
 saveDB();
 
 return sendJSON(res,{
 ok:true,
-device_id:deviceId,
-key:newKey,
-expires_at:expires
+device_id:deviceId
 });
+
 });
-		return;
-	}
+
+return;
+}
     // ================= KEY CHECK (APP DÙNG) =================
 if (
     pathname.startsWith("/keys/") &&
