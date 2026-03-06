@@ -427,20 +427,20 @@ if(record.device_id !== deviceId){
         const aesKey = crypto.randomBytes(32);
 
         const payload = JSON.stringify({
-            ok: true,
-            remaining: remaining,
-            
-            key: apiKey,
-            expires_at: record.expires_at,
-           devices_used: 1,
-           device_limit: 1
-            is_expired: false,
-            devices: [{
-    device_id: record.device_id,
-    label:"Device",
-    added_at: nowTime
-}]
-    }))
+    ok: true,
+    remaining: remaining,
+    key: apiKey,
+    expires_at: record.expires_at,
+    devices_used: 1,
+    device_limit: 1,
+    is_expired: false,
+    devices: [
+        {
+            device_id: record.device_id,
+            label: "Device",
+            added_at: nowTime
+        }
+    ]
 });
 
         const iv = crypto.randomBytes(12);
