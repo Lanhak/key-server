@@ -652,7 +652,7 @@ if (record.expires_at <= nowTime) {
             
             key: apiKey,
             expires_at: record.expires_at,
-            device_limit: 2,
+            device_limit: 999,
             devices_used: record.devices ? record.devices.length : 0,
             is_expired: false,
             devices: (record.devices || []).map(d => ({
