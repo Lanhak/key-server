@@ -490,18 +490,18 @@ if (
         const aesKey = crypto.randomBytes(32);
 
         const payload = JSON.stringify({
-            ok: true,
-            remaining: remaining,
-            
-            key: apiKey,
-            expires_at: record.expires_at,
-            device_limit: 2,
-            devices_used: record.devices ? record.devices.length : 0,
-            is_expired: false,
-            devices: (record.devices || []).map(d => ({
-            device_id: d,
-            label: "Device",
-            added_at: nowTime
+    ok: true,
+    remaining: remaining,
+    key: apiKey,
+    expires_at: record.expires_at,
+    server_time: nowTime,   // ⚠️ BẮT BUỘC
+    device_limit: 2,
+    devices_used: record.devices ? record.devices.length : 0,
+    is_expired: false,
+    devices: (record.devices || []).map(d => ({
+        device_id: d,
+        label: "Device",
+        added_at: nowTime
     }))
 });
 
