@@ -5,7 +5,7 @@ const fs = require("fs");
 const https = require("https");
 
 const PORT = process.env.PORT || 3000;
-const BASE_URL = "https://encrypto.dev";
+const BASE_URL = "https://key-server-4-nsw2.onrender.com";
 const LINK4M_TOKEN = "6899fc9d171a1f07277dde22";
 const KEY_PAGE = "https://lanhakk.blogspot.com/2026/01/lanh-ak.html";
 const DB_FILE = "database.json";
@@ -106,22 +106,16 @@ if (pathname === "/server-time") {
 // ================= CREATE KEY =================
 if (pathname === "/api/apikey/create") {
 
-    const deviceId = parsedUrl.query.device_id;
-
-    if(!deviceId){
-        return sendJSON(res,{error:"no device_id"});
-    }
-
-    const key = generateKey();
+    const key = generateKey(); // MTOOLMAX-XXXXXX
 
     database[key] = {
         key,
-        device_id: deviceId,
-        status: "pending",
+        status: "pending",              // ⚠ chưa verified
         expires_at: 0,
+        devices: [],
         created_at: now()
     };
-    
+
     saveDB();
 
     const callbackUrl =
@@ -253,9 +247,11 @@ if (
             return sendJSON(res, { ok:false });
         }
 
-        if(record.device_id !== device_id){
-    return sendJSON(res,{ok:false,message:"device invalid"});
-}
+        if (!record.devices) record.devices = [];
+
+        if (!record.devices.includes(device_id)) {
+            record.devices.push(device_id);
+        }
 
         saveDB();
 
@@ -293,8 +289,80 @@ if (pathname === "/notice/latest") {
         versionName: "2.6.9",
         created_at: Date.now()
     });
-    }
+ }
+    // ================= TRANG CHỦ =================
+    if (pathname === "/") {
 
+        res.writeHead(200, { "Content-Type": "text/html" });
+
+        return res.end(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bon Key System</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{
+    margin:0;
+    background:#000;
+    color:#00ff99;
+    font-family:monospace;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    flex-direction:column;
+}
+button{
+    padding:12px 25px;
+    background:#00ff99;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+    font-weight:bold;
+}
+button:hover{ opacity:0.8; }
+</style>
+</head>
+<body>
+<h2>BON KEY SERVER</h2>
+<button onclick="getKey()">LẤY KEY FREE</button>
+
+<script>
+function getKey(){
+    let pub = "web_" + Math.random().toString(36).substring(7);
+
+    fetch("/api/apikey/create?pub=" + pub)
+    .then(res => res.json())
+    .then(data => {
+
+        if(data.shortened_link){
+
+            let clean = data.shortened_link.replace("https://", "");
+
+            let intent =
+                "intent://" + clean +
+                "#Intent;scheme=https;package=com.android.chrome;end";
+
+            window.location.href = intent;
+
+            // Nếu Chrome không mở, fallback sau 1 giây
+            setTimeout(() => {
+                window.location.href = data.shortened_link;
+            }, 1000);
+
+        } else {
+            alert(data.error || "Lỗi tạo link!");
+        }
+
+    });
+}
+</script>
+</body>
+</html>
+`);
+    }
 //==========/////status.sec/////=========
 if (pathname === "/api/apikey/status.sec") {
 
@@ -388,11 +456,6 @@ if (
         .replace(".sec", "");
 
     const pubBase64 = parsedUrl.query.pub;
-    const deviceId = parsedUrl.query.device_id;
-
-if(record.device_id !== deviceId){
-    return sendJSON(res,{ok:false});
-}
 
     if (!pubBase64) {
         return sendJSON(res, { ok:false });
@@ -427,20 +490,19 @@ if(record.device_id !== deviceId){
         const aesKey = crypto.randomBytes(32);
 
         const payload = JSON.stringify({
-    ok: true,
-    remaining: remaining,
-    key: apiKey,
-    expires_at: record.expires_at,
-    devices_used: 1,
-    device_limit: 1,
-    is_expired: false,
-    devices: [
-        {
-            device_id: record.device_id,
+            ok: true,
+            remaining: remaining,
+            
+            key: apiKey,
+            expires_at: record.expires_at,
+            device_limit: 2,
+            devices_used: record.devices ? record.devices.length : 0,
+            is_expired: false,
+            devices: (record.devices || []).map(d => ({
+            device_id: d,
             label: "Device",
             added_at: nowTime
-        }
-    ]
+    }))
 });
 
         const iv = crypto.randomBytes(12);
@@ -587,154 +649,15 @@ if (pathname === "/pathsumbit") {
     return sendJSON(res, {
         items: []
     });
-            }
-
-
-// ================= VERSION PAGE =================
-
-if (pathname === "/" && parsedUrl.query.verision_app) {
-
-    const version = parsedUrl.query.verision_app
-
-    res.writeHead(200, { "Content-Type": "text/html" })
-
-    return res.end(`
-
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>BIBON SERVER</title>
-<style>
-body{
-background:#000;
-color:#00ffcc;
-font-family:monospace;
-display:flex;
-justify-content:center;
-align-items:center;
-height:100vh
 }
-.box{
-text-align:center
-}
-</style>
-</head>
-<body>
-<div class="box">
-<h1>BIBON KEY SERVER</h1>
-<p>Version: ${version}</p>
-<p id="time"></p>
-</div>
-<script>
-let remaining=0
-setInterval(()=>{
-remaining++
-document.getElementById("time").innerText="Server Time: "+Date.now()
-},1000)
-</script>
-</body>
-</html>
-
-`)
-
-}
-
-
-
-// ================= HOME =================
-
-if (pathname === "/") {
-
-res.writeHead(200,{ "Content-Type":"text/html" })
-
-return res.end(`
-
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>BIBON KEY SYSTEM</title>
-<style>
-body{
-background:#000;
-color:#0f0;
-font-family:monospace;
-display:flex;
-justify-content:center;
-align-items:center;
-height:100vh;
-flex-direction:column
-}
-button{
-padding:10px 20px;
-background:#0f0;
-border:none;
-cursor:pointer
-}
-</style>
-</head>
-<body>
-
-<h2>BIBON KEY SERVER</h2>
-
-<button onclick="getKey()">GET KEY</button>
-
-<script>
-
-function getKey(){
-
-let device="web_"+Math.random().toString(36).substring(2)
-
-fetch("/api/apikey/create?device_id="+device)
-
-.then(r=>r.json())
-
-.then(d=>{
-
-if(d.shortened_link){
-
-location.href=d.shortened_link
-
-}else{
-
-alert("error")
-
-}
-
-})
-
-}
-
-</script>
-
-</body>
-</html>
-
-`)
-
-}
-
-
-
 // ================= FALLBACK =================
-
 return sendJSON(res, {
-
     ok: true,
-
     uri: pathname
+});
 
-})
-
-
-
-})
-
-
+});  // 👈 ĐÓNG createServer
 
 server.listen(PORT, "0.0.0.0", () => {
-
-console.log("Server running on port", PORT)
-
-})
+    console.log("Server running on port", PORT);
+});
