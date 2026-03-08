@@ -386,8 +386,9 @@ if (pathname === "/api/apikey/status.sec") {
 
     const nowTime = now();
 
-    if (!record.expires_at || record.expires_at <= nowTime) {
-        record.expires_at = nowTime + 86400;
+    if (!record.expires_at) {
+    record.expires_at = record.created_at + 86400;
+}
         saveDB();
     }
 
