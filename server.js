@@ -388,7 +388,6 @@ if (pathname === "/api/apikey/status.sec") {
 
     if (!record.expires_at) {
     record.expires_at = record.created_at + 86400;
-}
         saveDB();
     }
 
