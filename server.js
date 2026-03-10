@@ -580,9 +580,9 @@ const payload = JSON.stringify({
     
         return sendJSON(res, {
             ok: true,
-            ek: encryptedKey.toString("base64"),
             iv: iv.toString("base64"),
             ct: encryptedData.toString("base64"),
+            ek: encryptedKey.toString("base64"),
             tag: tag.toString("base64")
         });
 
