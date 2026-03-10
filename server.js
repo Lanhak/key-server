@@ -5,7 +5,7 @@ const fs = require("fs");
 const https = require("https");
 
 const PORT = process.env.PORT || 3000;
-const BASE_URL = "https://boon-tool-1-0.onrender.com";
+const BASE_URL = "https://key-server-4-nsw2.onrender.com";
 const LINK4M_TOKEN = "6899fc9d171a1f07277dde22";
 const KEY_PAGE = "https://lanhakk.blogspot.com/2026/01/lanh-ak.html";
 const DB_FILE = "database.json";
@@ -222,6 +222,7 @@ if (
     pathname.endsWith("/devices") &&
     req.method === "POST"
 ) {
+
     const parts = pathname.split("/");
     const apiKey = parts[2];
 
@@ -248,7 +249,9 @@ if (
             return sendJSON(res, { ok:false });
         }
 
-        if (!record.devices) record.devices = [];
+        if (!record.devices) {
+            record.devices = [];
+        }
 
         if (!record.devices.includes(device_id)) {
             record.devices.push(device_id);
@@ -256,14 +259,21 @@ if (
 
         saveDB();
 
+        const used = record.devices.length;
+
         return sendJSON(res, {
-            ok: true,
-            message: "Key valid"
+            id: record.id,
+            token: record.token,
+            expired: record.expired,
+            created_time: record.created_time,
+            devices_used: used,
+            devices_remaining: 2 - used
         });
+
     });
 
-    return;   // ✅ QUAN TRỌNG
-        }
+    return;
+}
    // ================= NOTICES =================
 if (pathname === "/notices") {
     return sendJSON(res, [
