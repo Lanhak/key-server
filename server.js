@@ -107,14 +107,15 @@ if (pathname === "/server-time") {
 if (pathname === "/api/apikey/create") {
 
     const key = generateKey(); // MTOOLMAX-XXXXXX
-
+    const created = now();
     database[key] = {
-        key,
-        status: "pending",              // ⚠ chưa verified
-        expires_at: 0,
-        devices: [],
-        created_at: now()
-    };
+    id: Object.keys(database).length + 1,
+    token: key,
+    expired: created + 86400,
+    created_time: created,
+    status: "pending",
+    devices: []
+};
 
     saveDB();
 
@@ -153,8 +154,8 @@ if (pathname === "/api/apikey/callback") {
     record.status = "verified";
 
 const created = now();
-record.created_at = created;
-record.expires_at = created + 86400;
+record.created_time = created;
+record.expired = created + 86400;
 
 saveDB();
 
@@ -386,12 +387,12 @@ if (pathname === "/api/apikey/status.sec") {
 
     const nowTime = now();
 
-    if (!record.expires_at || record.expires_at <= nowTime) {
-        record.expires_at = nowTime + 86400;
+    if (!record.expired || record.expired <= nowTime) {
+        record.expired = nowTime + 86400;
         saveDB();
     }
 
-    const remaining = record.expires_at - nowTime;
+    const remaining = record.expired - nowTime;
 
     try {
 
@@ -405,7 +406,7 @@ if (pathname === "/api/apikey/status.sec") {
         const payload = JSON.stringify({
             ok: true,
             remaining: remaining,
-            expires_at: record.expires_at,
+            expired: record.expired,
             server_time: nowTime,
             user_id: 123456,
             username: "admin",
@@ -470,12 +471,12 @@ if (
     const nowTime = now();
 
     // Nếu chưa có expire hoặc expire <= now thì set lại 24h
-    if (!record.expires_at || record.expires_at <= nowTime) {
-        record.expires_at = nowTime + 86400;
+    if (!record.expired || record.expired <= nowTime) {
+        record.expired = nowTime + 86400;
         saveDB();
     }
 
-    const remaining = record.expires_at - nowTime;
+    const remaining = record.expired - nowTime;
 
     if (remaining <= 0) {
         return sendJSON(res, { ok:false });
@@ -494,7 +495,7 @@ if (
             remaining: remaining,
             
             key: apiKey,
-            expires_at: record.expires_at,
+            expired: record.expired,
             device_limit: 2,
             devices_used: record.devices ? record.devices.length : 0,
             is_expired: false,
@@ -585,12 +586,12 @@ if (pathname === "/config") {
 
     const nowTime = now();
 
-    if (!record.expires_at || record.expires_at <= nowTime) {
-        record.expires_at = nowTime + 86400;
+    if (!record.expired || record.expired <= nowTime) {
+        record.expired = nowTime + 86400;
         saveDB();
     }
 
-    const remaining = record.expires_at - nowTime;
+    const remaining = record.expired - nowTime;
 
     try {
 
@@ -604,7 +605,7 @@ if (pathname === "/config") {
         const payload = JSON.stringify({
             ok: true,
             remaining: remaining,
-            expires_at: record.expires_at,
+            expired: record.expired,
             server_time: nowTime,
             devices_used: record.devices ? record.devices.length : 0,
             device_limit: 2,
