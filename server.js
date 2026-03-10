@@ -488,9 +488,9 @@ if (
 
     const record = database[apiKey];
 
-    if (!record || record.status !== "verified") {
-        return sendJSON(res, { ok:false });
-    }
+    if (!record) {
+    return sendJSON(res, { ok:false });
+}
 
     const nowTime = now();
 
