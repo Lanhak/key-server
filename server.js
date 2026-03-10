@@ -103,12 +103,19 @@ const server = http.createServer((req, res) => {
 
     console.log("REQUEST:", req.method, pathname);
   // ================= SERVER TIME =================
+// ================= SERVER TIME =================
 if (pathname === "/server-time") {
 
-    return sendJSON(res, {
+    const body = JSON.stringify({
         server_time: now()
+    }, null, 4);
+
+    res.writeHead(200, {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(body)
     });
 
+    return res.end(body);
 }
 // ================= CREATE KEY =================
 if (pathname === "/api/apikey/create") {
