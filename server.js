@@ -52,8 +52,15 @@ function normalize(path) {
 }
 
 function sendJSON(res, obj) {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(obj));
+
+    const body = JSON.stringify(obj, null, 4);
+
+    res.writeHead(200, {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(body)
+    });
+
+    res.end(body);
 }
 
 function generateKey() {
