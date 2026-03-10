@@ -2,32 +2,11 @@ const http = require("http");
 const url = require("url");
 const crypto = require("crypto");
 const fs = require("fs");
-const https = require("https");
 
 const PORT = process.env.PORT || 3000;
-const BASE_URL = "https://boon-tool-1-0.onrender.com";
-const LINK4M_TOKEN = "6899fc9d171a1f07277dde22";
-const KEY_PAGE = "https://lanhakk.blogspot.com/2026/01/lanh-ak.html";
 const DB_FILE = "database.json";
 
 let database = {};
-
-// ================= HMAC SIGN =================
-function createSignature(secretB64, dataString) {
-    const secret = Buffer.from(secretB64, "base64");
-
-    return crypto
-        .createHmac("sha256", secret)
-        .update(dataString, "utf8")
-        .digest("base64");
-}
-
-// ================= HMAC VERIFY =================
-function verifySignature(secretB64, dataString, signature) {
-    const expected = createSignature(secretB64, dataString);
-    return expected === signature;
-}
-
 
 // ================= LOAD DATABASE =================
 try {
@@ -47,12 +26,7 @@ function now() {
     return Math.floor(Date.now() / 1000);
 }
 
-function normalize(path) {
-    return path.replace(/\/+/g, "/");
-}
-
 function sendJSON(res, obj) {
-
     const body = JSON.stringify(obj, null, 4);
 
     res.writeHead(200, {
@@ -66,660 +40,194 @@ function sendJSON(res, obj) {
 function generateKey() {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let random = "";
+
     for (let i = 0; i < 6; i++) {
         random += chars.charAt(Math.floor(Math.random() * chars.length));
     }
+
     return "MTOOLMAX-" + random;
-}
-
-function shortenLink(longUrl, callback) {
-    const apiUrl =
-        `https://link4m.co/api-shorten/v2?api=${LINK4M_TOKEN}&url=${encodeURIComponent(longUrl)}`;
-
-    https.get(apiUrl, (resp) => {
-        let data = "";
-        resp.on("data", chunk => data += chunk);
-        resp.on("end", () => {
-            try {
-                const json = JSON.parse(data);
-                callback(json);
-            } catch {
-                callback(null);
-            }
-        });
-    }).on("error", () => callback(null));
 }
 
 // ================= SERVER =================
 const server = http.createServer((req, res) => {
 
-    console.log("===================================");
-    console.log("FULL REQUEST:", req.method, req.url);
-    console.log("HEADERS:", req.headers);
-    console.log("===================================");
-
     const parsedUrl = url.parse(req.url, true);
-    const pathname = normalize(parsedUrl.pathname);
+    const pathname = parsedUrl.pathname;
 
-    console.log("REQUEST:", req.method, pathname);
-  // ================= SERVER TIME =================
-// ================= SERVER TIME =================
-if (pathname === "/server-time") {
+    console.log(req.method, pathname);
 
-    const body = JSON.stringify({
-        server_time: now()
-    }, null, 4);
 
-    res.writeHead(200, {
-        "Content-Type": "application/json",
-        "Content-Length": Buffer.byteLength(body)
-    });
-
-    return res.end(body);
-}
 // ================= CREATE KEY =================
 if (pathname === "/api/apikey/create") {
 
-    const key = generateKey(); // MTOOLMAX-XXXXXX
+    const key = generateKey();
     const created = now();
+
     database[key] = {
-    id: Object.keys(database).length + 1,
-    token: key,
-    expired: created + 86400,
-    created_time: created,
-    status: "pending",
-    devices: []
-};
+        id: Object.keys(database).length + 1,
+        token: key,
+        expired: created + 86400,
+        created_time: created,
+        devices: []
+    };
 
     saveDB();
 
-    const callbackUrl =
-        `${BASE_URL}/api/apikey/callback?key=${key}`;
-
-    shortenLink(callbackUrl, (result) => {
-
-        if (!result || result.status === "error") {
-            return sendJSON(res, { error: "Link4m error" });
-        }
-
-        return sendJSON(res, {
-            shortened_link:
-                result.shortenedUrl ||
-                result.shortened_url
-        });
+    return sendJSON(res,{
+        ok:true,
+        key:key
     });
-
-    return;
-}
-    // ================= CALLBACK VERIFY =================
-if (pathname === "/api/apikey/callback") {
-
-    const key = parsedUrl.query.key;
-
-    console.log("KEY:", key);
-    console.log("DATABASE:", database);
-
-    const record = database[key];
-
-    if (!record) {
-        return res.end("Key not found");
-    }
-
-    record.status = "verified";
-
-const created = now();
-record.created_time = created;
-record.expired = created + 86400;
-
-saveDB();
-
-
-    res.writeHead(302, {
-        Location: `${KEY_PAGE}?ma=${key}`
-    });
-
-    return res.end();
 }
 
-    // ================= DEVICE REGISTER =================
-    // ================= DEVICE REGISTER =================
+
+// ================= DEVICE REGISTER =================
 if (pathname === "/api/devices/register" && req.method === "POST") {
 
     let body = "";
+
     req.on("data", chunk => body += chunk);
 
     req.on("end", () => {
 
         let parsed;
-        try { parsed = JSON.parse(body); } catch { parsed = {}; }
 
-        const deviceId =
-            parsed.device_id ||
-            crypto.randomBytes(16).toString("hex");
-
-        const timeISO = new Date().toISOString();
-
-        // 🔐 secret random 32 byte
-        const secretBytes = crypto.randomBytes(32);
-        const secretB64 = secretBytes.toString("base64");
-
-        if (!database.__devices) {
-            database.__devices = {};
-        }
-
-        database.__devices[deviceId] = {
-            device_id: deviceId,
-            secret: secretB64,
-            created_at: now(),
-            last_seen: now()
-        };
-
-        saveDB();
-
-        return sendJSON(res, {
-            ok: true,
-            device_id: deviceId,
-            client_secret_b64: secretB64,
-            created_at: timeISO,
-            last_seen: timeISO,
-            secret_rotated_at: timeISO
-        });
-    });
-
-    return;
-    }
-    // ================= KEY CHECK (APP DÙNG) =================
-
-    // ================= KEY CHECK (APP DÙNG) =================
-if (
-    pathname.startsWith("/keys/") &&
-    pathname.endsWith("/devices") &&
-    req.method === "POST"
-) {
-
-    const parts = pathname.split("/");
-    const apiKey = parts[2];
-
-    let body = "";
-    req.on("data", chunk => body += chunk);
-
-    req.on("end", () => {
-
-        let parsed;
         try {
             parsed = JSON.parse(body);
         } catch {
             parsed = {};
         }
 
-        const device_id = parsed.device_id;
+        const deviceId =
+            parsed.device_id ||
+            crypto.randomBytes(16).toString("hex");
 
-        if (!device_id) {
-            return sendJSON(res, { ok:false, message:"No device_id" });
-        }
-
-        const record = database[apiKey];
-        if (!record) {
-            return sendJSON(res, { ok:false });
-        }
-
-        if (!record.devices) {
-            record.devices = [];
-        }
-
-        if (!record.devices.includes(device_id)) {
-            record.devices.push(device_id);
-        }
-
-        saveDB();
-
-        const used = record.devices.length;
-
-        return sendJSON(res, {
-            id: record.id,
-            token: record.token,
-            expired: record.expired,
-            created_time: record.created_time,
-            devices_used: used,
-            devices_remaining: 2 - used
+        return sendJSON(res,{
+            ok:true,
+            device_id:deviceId
         });
 
     });
 
     return;
 }
-   // ================= NOTICES =================
-if (pathname === "/notices") {
-    return sendJSON(res, [
-        {
-            title: "Thông báo hệ thống",
-            message: "Server mới đã hoạt động.",
-            versionName: "2.6.9",
-            created_at: Date.now()
-        },
-        {
-            title: "Cập nhật",
-            message: "App đã chuyển sang server riêng.",
-            versionName: "2.6.9",
-            created_at: Date.now()
-        }
-    ]);
-}
 
-// ================= NOTICE LATEST =================
-if (pathname === "/notice/latest") {
-    return sendJSON(res, {
-        title: "Thông báo mới nhất",
-        message: "Đây là notice mới nhất từ server.",
-        versionName: "2.6.9",
-        created_at: Date.now()
-    });
- }
-    // ================= TRANG CHỦ =================
-    if (pathname === "/") {
 
-        res.writeHead(200, { "Content-Type": "text/html" });
-
-        return res.end(`
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Bon Key System</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body{
-    margin:0;
-    background:#000;
-    color:#00ff99;
-    font-family:monospace;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
-    flex-direction:column;
-}
-button{
-    padding:12px 25px;
-    background:#00ff99;
-    border:none;
-    border-radius:5px;
-    cursor:pointer;
-    font-weight:bold;
-}
-button:hover{ opacity:0.8; }
-</style>
-</head>
-<body>
-<h2>BON KEY SERVER</h2>
-<button onclick="getKey()">LẤY KEY FREE</button>
-
-<script>
-function getKey(){
-    let pub = "web_" + Math.random().toString(36).substring(7);
-
-    fetch("/api/apikey/create?pub=" + pub)
-    .then(res => res.json())
-    .then(data => {
-
-        if(data.shortened_link){
-
-            let clean = data.shortened_link.replace("https://", "");
-
-            let intent =
-                "intent://" + clean +
-                "#Intent;scheme=https;package=com.android.chrome;end";
-
-            window.location.href = intent;
-
-            // Nếu Chrome không mở, fallback sau 1 giây
-            setTimeout(() => {
-                window.location.href = data.shortened_link;
-            }, 1000);
-
-        } else {
-            alert(data.error || "Lỗi tạo link!");
-        }
-
-    });
-}
-</script>
-</body>
-</html>
-`);
-    }
-//==========/////status.sec/////=========
+// ================= KEY STATUS =================
 if (pathname === "/api/apikey/status.sec") {
 
     const apiKey = parsedUrl.query.api_key;
-    const pubBase64 = parsedUrl.query.pub;
-    const ua = req.headers["user-agent"] || "";
 
-  //  if (!ua.includes("MToolMax-http")) {
-   //     return sendJSON(res, { ok:false });
-//    }
-
-    if (!apiKey || !pubBase64) {
-        return sendJSON(res, { ok:false });
+    if (!apiKey) {
+        return sendJSON(res,{ok:false});
     }
 
     const record = database[apiKey];
 
     if (!record) {
-    return sendJSON(res, { ok:false });
-}
+        return sendJSON(res,{ok:false});
+    }
 
     const nowTime = now();
 
-    if (!record.expired || record.expired <= nowTime) {
-        record.expired = nowTime + 86400;
-        saveDB();
-    }
-
     const remaining = record.expired - nowTime;
-    
-    if (pubBase64 === "test") {
-    return sendJSON(res,{
-    ok:true,
 
-    key: apiKey,
+    // ================= PAYLOAD =================
+    const payload = JSON.stringify({
 
-    remaining:remaining,
-    expired:record.expired,
-    server_time:nowTime,
+        ok:true,
+        key:apiKey,
 
-    is_expired:false,
+        remaining:remaining,
+        expired:record.expired,
+        server_time:nowTime,
 
-    devices_used: record.devices ? record.devices.length : 0,
-    device_limit:2
-});
-}
+        is_expired:false,
 
-    try {
+        devices_used:record.devices.length,
+        device_limit:2,
 
-        const publicKey = crypto.createPublicKey({
-            key: Buffer.from(pubBase64, "base64").toString("utf8"),
-            format: "pem"
-        });
+        devices:(record.devices || []).map(d => ({
+            device_id:d,
+            label:"Device",
+            added_at:nowTime
+        }))
 
-        const aesKey = crypto.randomBytes(32);
+    });
 
-        const payload = JSON.stringify({
-            ok: true,
-            remaining: remaining,
-            expired: record.expired,
-            server_time: nowTime,
-            user_id: 123456,
-            username: "admin",
-            balance: 9999,
-            devices_used: record.devices ? record.devices.length : 0,
-            device_limit:  2
-        });
+    // ================= AES ENCRYPT =================
+    const aesKey = crypto.randomBytes(32);
+    const iv = crypto.randomBytes(12);
 
-        const iv = crypto.randomBytes(12);
-        const cipher = crypto.createCipheriv("aes-256-gcm", aesKey, iv);
+    const cipher = crypto.createCipheriv(
+        "aes-256-gcm",
+        aesKey,
+        iv
+    );
 
-        const encryptedData = Buffer.concat([
-            cipher.update(payload, "utf8"),
-            cipher.final()
-        ]);
+    const encryptedData = Buffer.concat([
+        cipher.update(payload,"utf8"),
+        cipher.final()
+    ]);
 
-        const tag = cipher.getAuthTag();
+    const tag = cipher.getAuthTag();
 
-        const encryptedKey = crypto.publicEncrypt(
-            {
-                key: publicKey,
-                padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-                oaepHash: "sha1"
-            },
-            aesKey
-        );
 
-        return sendJSON(res, {
-            ok: true,
-            
-            iv: iv.toString("base64"),
-            ct: encryptedData.toString("base64"),
-            ek: encryptedKey.toString("base64"),
-            tag: tag.toString("base64")
-        });
-
-    } catch (err) {
-        return sendJSON(res, { ok:false });
-    }
-}
-    // ================= KEY SEC =================
-    
-if (
-    pathname.startsWith("/keys/") &&
-    pathname.endsWith(".sec")
-) {
-    const apiKey = pathname
-        .replace("/keys/", "")
-        .replace(".sec", "");
-
+    // ================= RSA ENCRYPT KEY =================
     const pubBase64 = parsedUrl.query.pub;
 
     if (!pubBase64) {
-        return sendJSON(res, { ok:false });
-    }
 
-    const record = database[apiKey];
-
-    if (!record) {
-    return sendJSON(res, { ok:false });
-}
-
-    const nowTime = now();
-
-    // Nếu chưa có expire hoặc expire <= now thì set lại 24h
-    if (!record.expired || record.expired <= nowTime) {
-        record.expired = nowTime + 86400;
-        saveDB();
-    }
-
-    const remaining = record.expired - nowTime;
-
-    if (remaining <= 0) {
-        return sendJSON(res, { ok:false });
-    }
-    
-    if (pubBase64 === "test") {
-  return sendJSON(res,{
- "ok": true,
- "remaining": 85811,
- "expired": 1773239849,
- "server_time": 1773154038,
- "devices_used": 0,
- "device_limit": 2,
- "is_expired": false
-  });
-}
-if (!record.devices) record.devices = [];
-
-    try {
-        const publicKey = crypto.createPublicKey({
-            key: Buffer.from(pubBase64, "base64").toString("utf8"),
-            format: "pem"
+        // debug mode
+        return sendJSON(res,{
+            ok:true,
+            remaining:remaining,
+            expired:record.expired,
+            server_time:nowTime
         });
-
-        const aesKey = crypto.randomBytes(32);
-
-const payload = JSON.stringify({
-    ok: true,
-    remaining: remaining,
-    expired: record.expired,
-    server_time: nowTime,   // BẮT BUỘC
-
-    key: apiKey,
-
-    devices_used: record.devices ? record.devices.length : 0,
-    device_limit: 2,
-
-    is_expired: false,
-
-    devices: (record.devices || []).map(d => ({
-        device_id: d,
-        label: "Device",
-        added_at: nowTime
-    }))
-});
-
-        const iv = crypto.randomBytes(12);
-        const cipher = crypto.createCipheriv("aes-256-gcm", aesKey, iv);
-
-        const encryptedData = Buffer.concat([
-            cipher.update(payload, "utf8"),
-            cipher.final()
-        ]);
-
-        const tag = cipher.getAuthTag();
-
-        const encryptedKey = crypto.publicEncrypt(
-            {
-                key: publicKey,
-                padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-                oaepHash: "sha1"
-            },
-            aesKey
-        );
-
-    
-        return sendJSON(res, {
-            ok: true,
-            
-            iv: iv.toString("base64"),
-            ct: encryptedData.toString("base64"),
-            ek: encryptedKey.toString("base64"),
-            tag: tag.toString("base64")
-        });
-
-    } 
-    
-    catch (err) {
-        return sendJSON(res, { ok:false });
     }
-}                       
-    // ================= APP CONFIG =================
-if (pathname === "/config") {
-    return sendJSON(res, {
-        hethan: "Key hết hạn",
-        crack: "OK",                      // <-- đây chính là MToolMaxApp.i.d
-        keyhethan: "Key đã hết hạn",
-        keydahethan: "Key đã sử dụng",
-        thietbikhongcontrongkey: "Thiết bị không hợp lệ",
-        pathapikey: "/api/apikey/create",
-        pathregdevice: "/api/devices/register",
-        useragent: "BonApp/2.6.9",
-        pathsumbit: "/submit",
-        pathatackdevice: "/attack",
-        pathloginkey: "/login",
-        paththongbaomoi: "/notice/latest",
-        path50thongbao: "/notice/list",
-        pathenfbgolike: "/fb",
-        pathcaptcha: "/captcha",
-        pathgolike: "/golike",
-        pathfb: "/fb",
-        pathtds: "/tds",
-        pathig: "/ig",
-        pathttc: "/ttc",
-        pathtiktok: "/tiktok",
-        listapi: []
+
+    const publicKey = crypto.createPublicKey({
+        key:Buffer.from(pubBase64,"base64").toString("utf8"),
+        format:"pem"
+    });
+
+    const encryptedKey = crypto.publicEncrypt(
+        {
+            key:publicKey,
+            padding:crypto.constants.RSA_PKCS1_OAEP_PADDING,
+            oaepHash:"sha1"
+        },
+        aesKey
+    );
+
+    return sendJSON(res,{
+        ok:true,
+
+        ek:encryptedKey.toString("base64"),
+        iv:iv.toString("base64"),
+        ct:encryptedData.toString("base64"),
+        tag:tag.toString("base64")
     });
 }
-    //==============//getstrings2.sec//========
 
-    if (pathname === "/getstrings2.sec") {
 
-    const apiKey = parsedUrl.query.key;
-    const pubBase64 = parsedUrl.query.pub;
+// ================= ROOT =================
+if (pathname === "/") {
 
-    if (!apiKey || !pubBase64) {
-        return sendJSON(res, { ok:false });
-    }
-
-    const record = database[apiKey];
-
-    if (!record || record.status !== "verified") {
-        return sendJSON(res, { ok:false });
-    }
-
-    const nowTime = now();
-
-    if (!record.expired || record.expired <= nowTime) {
-        record.expired = nowTime + 86400;
-        saveDB();
-    }
-
-    const remaining = record.expired - nowTime;
-
-    try {
-
-        const publicKey = crypto.createPublicKey({
-            key: Buffer.from(pubBase64, "base64").toString("utf8"),
-            format: "pem"
-        });
-
-        const aesKey = crypto.randomBytes(32);
-
-        const payload = JSON.stringify({
-            ok: true,
-            remaining: remaining,
-            expired: record.expired,
-            server_time: nowTime,
-            devices_used: record.devices ? record.devices.length : 0,
-            device_limit: 2,
-            crack: "OK"
-        });
-
-        const iv = crypto.randomBytes(12);
-        const cipher = crypto.createCipheriv("aes-256-gcm", aesKey, iv);
-
-        const encryptedData = Buffer.concat([
-            cipher.update(payload, "utf8"),
-            cipher.final()
-        ]);
-
-        const tag = cipher.getAuthTag();
-
-        const encryptedKey = crypto.publicEncrypt(
-            {
-                key: publicKey,
-                padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-                oaepHash: "sha1"
-            },
-            aesKey
-        );
-
-        return sendJSON(res, {
-            ok: true,
-            
-            iv: iv.toString("base64"),
-            ct: encryptedData.toString("base64"),
-            ek: encryptedKey.toString("base64"),
-            tag: tag.toString("base64")
-        });
-
-    } catch (err) {
-        return sendJSON(res, { ok:false });
-    }
-    }
-
-// ================= SUBMIT (pathsumbit) =================
-// ================= SUBMIT (pathsumbit) =================
-if (pathname === "/pathsumbit") {
-    return sendJSON(res, {
-        items: []
+    res.writeHead(200,{
+        "Content-Type":"text/html"
     });
+
+    return res.end(`
+<h2>MToolMax Key Server</h2>
+<p>Server running...</p>
+`);
 }
-// ================= FALLBACK =================
-return sendJSON(res, {
-    ok: true,
-    uri: pathname
+
+sendJSON(res,{ok:false});
+
 });
 
-});  // 👈 ĐÓNG createServer
-
-server.listen(PORT, "0.0.0.0", () => {
-    console.log("Server running on port", PORT);
+server.listen(PORT,()=>{
+    console.log("SERVER RUNNING:",PORT);
 });
