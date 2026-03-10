@@ -526,13 +526,13 @@ if (
     
     if (pubBase64 === "test") {
   return sendJSON(res,{
-      ok:true,
-      remaining:remaining,
-      expired:record.expired,
-      server_time:nowTime,
-      key:apiKey,
-      device_limit:2,
-      devices_used: record.devices ? record.devices.length : 0
+ "ok": true,
+ "remaining": 85811,
+ "expired": 1773239849,
+ "server_time": 1773154038,
+ "devices_used": 0,
+ "device_limit": 2,
+ "is_expired": false
   });
 }
 if (!record.devices) record.devices = [];
