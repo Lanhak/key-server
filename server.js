@@ -183,27 +183,9 @@ if (pathname === "/api/devices/register" && req.method === "POST") {
             parsed.device_id ||
             crypto.randomBytes(16).toString("hex");
 
-        const key = parsed.token || parsed.key;
+        const timeISO = new Date().toISOString();
 
-        if (!key) {
-            return sendJSON(res, { ok:false, message:"No key" });
-        }
-
-        const record = database[key];
-
-        if (!record) {
-            return sendJSON(res, { ok:false, message:"Key not found" });
-        }
-
-        if (!record.devices) {
-            record.devices = [];
-        }
-
-        if (!record.devices.includes(deviceId)) {
-            record.devices.push(deviceId);
-        }
-
-        // tạo secret
+        // 🔐 secret random 32 byte
         const secretBytes = crypto.randomBytes(32);
         const secretB64 = secretBytes.toString("base64");
 
@@ -221,16 +203,17 @@ if (pathname === "/api/devices/register" && req.method === "POST") {
         saveDB();
 
         return sendJSON(res, {
-            id: record.id,
-            token: record.token,
-            expired: record.expired,
-            created_time: record.created_time
+            ok: true,
+            device_id: deviceId,
+            client_secret_b64: secretB64,
+            created_at: timeISO,
+            last_seen: timeISO,
+            secret_rotated_at: timeISO
         });
-
     });
 
     return;
-}
+    }
     // ================= KEY CHECK (APP DÙNG) =================
 
     // ================= KEY CHECK (APP DÙNG) =================
