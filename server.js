@@ -420,13 +420,19 @@ if (pathname === "/api/apikey/status.sec") {
     
     if (pubBase64 === "test") {
     return sendJSON(res,{
-        ok:true,
-        remaining:remaining,
-        expired:record.expired,
-        server_time:nowTime,
-        devices_used: record.devices ? record.devices.length : 0,
-        device_limit:2
-    });
+    ok:true,
+
+    key: apiKey,
+
+    remaining:remaining,
+    expired:record.expired,
+    server_time:nowTime,
+
+    is_expired:false,
+
+    devices_used: record.devices ? record.devices.length : 0,
+    device_limit:2
+});
 }
 
     try {
@@ -471,9 +477,10 @@ if (pathname === "/api/apikey/status.sec") {
 
         return sendJSON(res, {
             ok: true,
-            ek: encryptedKey.toString("base64"),
+            
             iv: iv.toString("base64"),
             ct: encryptedData.toString("base64"),
+            ek: encryptedKey.toString("base64"),
             tag: tag.toString("base64")
         });
 
@@ -580,6 +587,7 @@ const payload = JSON.stringify({
     
         return sendJSON(res, {
             ok: true,
+            
             iv: iv.toString("base64"),
             ct: encryptedData.toString("base64"),
             ek: encryptedKey.toString("base64"),
