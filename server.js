@@ -381,9 +381,9 @@ if (pathname === "/api/apikey/status.sec") {
     const pubBase64 = parsedUrl.query.pub;
     const ua = req.headers["user-agent"] || "";
 
-    if (!ua.includes("MToolMax-http")) {
-        return sendJSON(res, { ok:false });
-    }
+  //  if (!ua.includes("MToolMax-http")) {
+   //     return sendJSON(res, { ok:false });
+//    }
 
     if (!apiKey || !pubBase64) {
         return sendJSON(res, { ok:false });
@@ -538,9 +538,9 @@ if (
     
         return sendJSON(res, {
             ok: true,
+            ek: encryptedKey.toString("base64"),
             iv: iv.toString("base64"),
             ct: encryptedData.toString("base64"),
-            ek: encryptedKey.toString("base64"),
             tag: tag.toString("base64")
         });
 
