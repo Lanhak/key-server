@@ -490,19 +490,78 @@ if (
         const aesKey = crypto.randomBytes(32);
 
         const payload = JSON.stringify({
-            ok: true,
-            remaining: remaining,
-            
-            key: apiKey,
-            expires_at: record.expires_at,
-            device_limit: 2,
-            devices_used: record.devices ? record.devices.length : 0,
-            is_expired: false,
-            devices: (record.devices || []).map(d => ({
-            device_id: d,
-            label: "Device",
-            added_at: nowTime
-    }))
+    ok: true,
+
+    remaining: remaining,
+
+    key: apiKey,
+
+    expires_at: record.expires_at,
+
+    server_time: nowTime,
+
+    device_limit: 2,
+
+    devices_used: record.devices ? record.devices.length : 0,
+
+    is_expired: false,
+
+    devices: (record.devices || []).map(d => ({
+        device_id: d,
+        label: "Device",
+        added_at: nowTime
+    })),
+
+    // ================= CONFIG MOVED HERE =================
+
+    config: {
+
+        hethan: "Key hết hạn",
+
+        crack: "OK",
+
+        keyhethan: "Key đã hết hạn",
+
+        keydahethan: "Key đã sử dụng",
+
+        thietbikhongcontrongkey: "Thiết bị không hợp lệ",
+
+        pathapikey: "/api/apikey/create",
+
+        pathregdevice: "/api/devices/register",
+
+        useragent: "BonApp/2.6.9",
+
+        pathsumbit: "/pathsumbit",
+
+        pathatackdevice: "/attack",
+
+        pathloginkey: "/login",
+
+        paththongbaomoi: "/notice/latest",
+
+        path50thongbao: "/notice/list",
+
+        pathenfbgolike: "/fb",
+
+        pathcaptcha: "/captcha",
+
+        pathgolike: "/golike",
+
+        pathfb: "/fb",
+
+        pathtds: "/tds",
+
+        pathig: "/ig",
+
+        pathttc: "/ttc",
+
+        pathtiktok: "/tiktok",
+
+        listapi: []
+
+    }
+
 });
 
         const iv = crypto.randomBytes(12);
