@@ -96,20 +96,12 @@ const server = http.createServer((req, res) => {
 
     console.log("REQUEST:", req.method, pathname);
     // ================= SERVER TIME =================
-if (pathname === "/server-time") {
-
- const time = Math.floor(Date.now()/1000);
-
- res.writeHead(200,{
-  "Content-Type":"application/json"
- });
-
- res.end(JSON.stringify({
-  server_time: time
- }));
-
- return;
-}
+// ================= SERVER TIME =================
+app.get("/server-time", (req, res) => {
+  res.status(200).json({
+    server_time: Math.floor(Date.now() / 1000)
+  });
+});
 // ================= CREATE KEY =================
 if (pathname === "/api/apikey/create") {
 
