@@ -168,7 +168,8 @@ saveDB();
 }
 
     // ================= DEVICE REGISTER =================
-    if (pathname === "/api/devices/register" && req.method === "POST") {
+    // ================= DEVICE REGISTER =================
+if (pathname === "/api/devices/register" && req.method === "POST") {
 
     let body = "";
     req.on("data", chunk => body += chunk);
@@ -182,9 +183,27 @@ saveDB();
             parsed.device_id ||
             crypto.randomBytes(16).toString("hex");
 
-        const timeISO = new Date().toISOString();
+        const key = parsed.token || parsed.key;
 
-        // 🔐 secret random 32 byte
+        if (!key) {
+            return sendJSON(res, { ok:false, message:"No key" });
+        }
+
+        const record = database[key];
+
+        if (!record) {
+            return sendJSON(res, { ok:false, message:"Key not found" });
+        }
+
+        if (!record.devices) {
+            record.devices = [];
+        }
+
+        if (!record.devices.includes(deviceId)) {
+            record.devices.push(deviceId);
+        }
+
+        // tạo secret
         const secretBytes = crypto.randomBytes(32);
         const secretB64 = secretBytes.toString("base64");
 
@@ -202,18 +221,16 @@ saveDB();
         saveDB();
 
         return sendJSON(res, {
-            ok: true,
-            device_id: deviceId,
-            client_secret_b64: secretB64,
-            created_at: timeISO,
-            last_seen: timeISO,
-            secret_rotated_at: timeISO
+            id: record.id,
+            token: record.token,
+            expired: record.expired,
+            created_time: record.created_time
         });
+
     });
 
     return;
-    }
-
+}
     // ================= KEY CHECK (APP DÙNG) =================
 
     // ================= KEY CHECK (APP DÙNG) =================
