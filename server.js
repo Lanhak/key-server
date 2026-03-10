@@ -95,16 +95,7 @@ const server = http.createServer((req, res) => {
     const pathname = normalize(parsedUrl.pathname);
 
     console.log("REQUEST:", req.method, pathname);
-    // ================= SERVER TIME =================
-// ================= SERVER TIME =================
-// ================= SERVER TIME =================
-if (pathname === "/server-time") {
-
-    return sendJSON(res, {
-        server_time: now()
-    });
-
-}// ================= SERVER TIME =================
+  // ================= SERVER TIME =================
 if (pathname === "/server-time") {
 
     return sendJSON(res, {
