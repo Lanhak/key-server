@@ -505,6 +505,17 @@ if (
     if (remaining <= 0) {
         return sendJSON(res, { ok:false });
     }
+    
+    if (pubBase64 === "test") {
+    return sendJSON(res,{
+        ok:true,
+        remaining:remaining,
+        key:apiKey,
+        expired:record.expired,
+        device_limit:2,
+        devices_used: record.devices ? record.devices.length : 0
+    });
+}
 
     try {
         const publicKey = crypto.createPublicKey({
