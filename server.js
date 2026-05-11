@@ -1,18 +1,25 @@
 /**
  * Server cấp key hợp pháp (free key + trang nhận key + API verify)
- * Chạy:
+ *
+ * Chạy local:
  *   npm init -y
  *   npm i express helmet cors
  *   node server.js
+ *
+ * Deploy (Render/Railway):
+ *   Build: npm i
+ *   Start: node server.js
+ *   Env: PORT (auto), BASE_URL (khuyến nghị, ví dụ https://ten-app.onrender.com)
+ *
+ * Deploy (Vercel/serverless):
+ * - Vercel KHÔNG phù hợp cho app.listen() kiểu server truyền thống. Nếu bạn dùng Vercel,
+ *   nên chuyển sang dạng serverless handler. (Mình có thể chuyển giúp nếu bạn xác nhận dùng Vercel.)
  *
  * Mặc định:
  * - GET  /              : Trang web có nút "○ Lấy key free"
  * - POST /api/free-key  : Tạo key + trả về claimUrl để mở (user tự mở link lấy key)
  * - GET  /claim/:token  : Trang hiển thị key (copy)
  * - POST /api/verify    : App gọi để kiểm tra key { key, deviceId? }
- *
- * LƯU Ý:
- * - Đây là mẫu server cấp phép hợp pháp. App cần tích hợp gọi /api/verify.
  */
 const express = require("express");
 const helmet = require("helmet");
@@ -20,6 +27,7 @@ const cors = require("cors");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 
 const app = express();
 
@@ -29,10 +37,25 @@ app.use(cors());
 app.use(express.json({ limit: "256kb" }));
 app.use(express.urlencoded({ extended: false }));
 
+// Log request (bật khi cần debug: LOG_REQUESTS=1)
+if (process.env.LOG_REQUESTS === "1") {
+  app.use((req, _res, next) => {
+    // eslint-disable-next-line no-console
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} ip=${req.ip} ua=${req.headers["user-agent"] || "-"}`);
+    next();
+  });
+}
+
 // ====== CẤU HÌNH ======
 const PORT = Number(process.env.PORT || 3000);
-const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
-const DATA_FILE = path.join(__dirname, "data.keys.json");
+
+// DATA_FILE:
+// - Render/Railway: có thể ghi ở project dir (nhưng không bền vĩnh viễn nếu redeploy)
+// - Serverless (Vercel…): FS thường chỉ ghi được ở /tmp
+const DATA_DIR =
+  process.env.DATA_DIR ||
+  (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME ? os.tmpdir() : __dirname);
+const DATA_FILE = path.join(DATA_DIR, "data.keys.json");
 
 // key miễn phí: hết hạn cuối ngày (giống “dùng trong ngày”), bạn đổi tuỳ ý
 const FREE_KEY_EXPIRES_AT_END_OF_DAY = true;
@@ -45,25 +68,7 @@ const FREE_KEY_DAILY_LIMIT = 10; // tối đa 10 key/ngày/IP
 // bind device (tuỳ chọn): lần verify đầu sẽ gắn deviceId, các lần sau bắt buộc trùng
 const BIND_TO_DEVICE_ID = true;
 
-// ====== LƯU TRỮ ======
-function loadDB() {
-  try {
-    const raw = fs.readFileSync(DATA_FILE, "utf8");
-    const db = JSON.parse(raw);
-    if (!db || typeof db !== "object") return { keys: {}, claims: {}, ipStats: {} };
-    db.keys ||= {};
-    db.claims ||= {};
-    db.ipStats ||= {};
-    return db;
-  } catch {
-    return { keys: {}, claims: {}, ipStats: {} };
-  }
-}
-
-function saveDB(db) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2), "utf8");
-}
-
+// ====== Helpers ======
 function nowMs() {
   return Date.now();
 }
@@ -96,6 +101,34 @@ function normalizeDeviceId(deviceId) {
   return s;
 }
 
+function ensureDataDir() {
+  try {
+    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
+  } catch {
+    // ignore
+  }
+}
+
+function loadDB() {
+  try {
+    ensureDataDir();
+    const raw = fs.readFileSync(DATA_FILE, "utf8");
+    const db = JSON.parse(raw);
+    if (!db || typeof db !== "object") return { keys: {}, claims: {}, ipStats: {} };
+    db.keys ||= {};
+    db.claims ||= {};
+    db.ipStats ||= {};
+    return db;
+  } catch {
+    return { keys: {}, claims: {}, ipStats: {} };
+  }
+}
+
+function saveDB(db) {
+  ensureDataDir();
+  fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2), "utf8");
+}
+
 function cleanupExpired(db) {
   const t = nowMs();
   for (const [k, v] of Object.entries(db.keys)) {
@@ -107,8 +140,18 @@ function cleanupExpired(db) {
   }
 }
 
+function getBaseUrl(req) {
+  // Ưu tiên BASE_URL nếu bạn set sẵn (khuyến nghị cho production)
+  if (process.env.BASE_URL) return String(process.env.BASE_URL).replace(/\/+$/, "");
+
+  // Fallback: tự suy ra từ request (tránh sai http/https khi deploy)
+  const proto = req.protocol || "http";
+  const host = req.get("host") || `localhost:${PORT}`;
+  return `${proto}://${host}`;
+}
+
 // ====== UI HTML (gói trong 1 file server.js) ======
-function pageShell({ title, bodyHtml, extraHead = "", extraScript = "" }) {
+function pageShell({ title, bodyHtml, baseUrl, extraHead = "", extraScript = "" }) {
   return `<!doctype html>
 <html lang="vi">
 <head>
@@ -139,9 +182,7 @@ function pageShell({ title, bodyHtml, extraHead = "", extraScript = "" }) {
       display:flex; gap:14px; align-items:center; justify-content:space-between;
       margin-bottom:14px;
     }
-    .brand{
-      display:flex; align-items:center; gap:12px;
-    }
+    .brand{display:flex; align-items:center; gap:12px;}
     .logo{
       width:42px; height:42px; border-radius:14px;
       background: linear-gradient(135deg, rgba(110,231,255,.9), rgba(167,139,250,.9));
@@ -228,7 +269,7 @@ function pageShell({ title, bodyHtml, extraHead = "", extraScript = "" }) {
           <div class="sub">Free key portal · Verify API</div>
         </div>
       </div>
-      <span class="chip">Server: <span class="mono">${escapeHtml(BASE_URL)}</span></span>
+      <span class="chip">Server: <span class="mono">${escapeHtml(baseUrl)}</span></span>
     </div>
     <div class="card">
       <div class="card-inner">
@@ -258,6 +299,8 @@ function escapeHtml(s) {
 // ====== ROUTES ======
 app.get("/", (req, res) => {
   const ip = getClientIp(req);
+  const baseUrl = getBaseUrl(req);
+
   const bodyHtml = `
     <div class="grid">
       <div class="panel">
@@ -276,7 +319,7 @@ app.get("/", (req, res) => {
       </div>
       <div class="panel">
         <h3 style="margin:0 0 8px;">API cho app</h3>
-        <div class="k mono">POST ${escapeHtml(BASE_URL)}/api/verify</div>
+        <div class="k mono">POST ${escapeHtml(baseUrl)}/api/verify</div>
         <div class="msg">
           Body JSON:
           <div class="k mono" style="margin-top:8px;">{"key":"BON_...","deviceId":"... (tuỳ chọn)"}</div>
@@ -299,9 +342,9 @@ app.get("/", (req, res) => {
       btn.disabled = true;
       try{
         const r = await fetch('/api/free-key', { method:'POST' });
-        const j = await r.json();
+        const j = await r.json().catch(() => ({}));
         if(!r.ok){
-          out.innerHTML = '<span class="danger">'+(j.error || 'Có lỗi')+'</span>';
+          out.innerHTML = '<span class="danger">'+(j.error || ('Có lỗi (HTTP '+r.status+')'))+'</span>';
           return;
         }
         out.innerHTML =
@@ -318,77 +361,93 @@ app.get("/", (req, res) => {
     });
   `;
 
-  res.type("html").send(pageShell({ title: "Key Server", bodyHtml, extraScript }));
+  res.type("html").send(pageShell({ title: "Key Server", bodyHtml, extraScript, baseUrl }));
 });
 
 app.get("/health", (req, res) => {
-  res.json({ ok: true, time: new Date().toISOString() });
+  res.json({
+    ok: true,
+    time: new Date().toISOString(),
+    dataFile: DATA_FILE, // để debug quyền ghi file
+  });
 });
 
 // Tạo key + claim link (user tự mở)
 app.post("/api/free-key", (req, res) => {
-  const db = loadDB();
-  cleanupExpired(db);
+  try {
+    const db = loadDB();
+    cleanupExpired(db);
 
-  const ip = getClientIp(req);
-  const dayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  const statKey = `${ip}::${dayKey}`;
-  const s = db.ipStats[statKey] || { lastAt: 0, count: 0 };
+    const ip = getClientIp(req);
+    const dayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const statKey = `${ip}::${dayKey}`;
+    const s = db.ipStats[statKey] || { lastAt: 0, count: 0 };
 
-  if (s.lastAt && nowMs() - s.lastAt < FREE_KEY_COOLDOWN_MS) {
-    const waitSec = Math.ceil((FREE_KEY_COOLDOWN_MS - (nowMs() - s.lastAt)) / 1000);
+    if (s.lastAt && nowMs() - s.lastAt < FREE_KEY_COOLDOWN_MS) {
+      const waitSec = Math.ceil((FREE_KEY_COOLDOWN_MS - (nowMs() - s.lastAt)) / 1000);
+      saveDB(db);
+      return res.status(429).json({ error: `Bạn thao tác quá nhanh, thử lại sau ${waitSec}s.` });
+    }
+    if (s.count >= FREE_KEY_DAILY_LIMIT) {
+      saveDB(db);
+      return res.status(429).json({ error: "Hôm nay bạn đã đạt giới hạn lấy key miễn phí." });
+    }
+
+    const key = newKey();
+    const token = randomToken(18);
+    const createdAt = nowMs();
+    const expiresAt = FREE_KEY_EXPIRES_AT_END_OF_DAY ? endOfDayMs() : createdAt + FREE_KEY_TTL_MS;
+
+    db.keys[key] = {
+      key,
+      type: "free",
+      createdAt,
+      expiresAt,
+      createdIp: ip,
+      deviceId: "", // sẽ bind lúc verify (nếu bật)
+    };
+
+    // claim token sống 15 phút (chỉ để mở trang nhận key)
+    db.claims[token] = {
+      token,
+      key,
+      createdAt,
+      expiresAt: createdAt + 15 * 60 * 1000,
+    };
+
+    db.ipStats[statKey] = { lastAt: createdAt, count: (s.count || 0) + 1 };
     saveDB(db);
-    return res.status(429).json({ error: `Bạn thao tác quá nhanh, thử lại sau ${waitSec}s.` });
+
+    const baseUrl = getBaseUrl(req);
+    const claimUrl = `${baseUrl}/claim/${encodeURIComponent(token)}`;
+    res.json({ ok: true, claimUrl, expiresAt });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("free-key error:", e);
+    res.status(500).json({ error: "Server lỗi khi tạo key" });
   }
-  if (s.count >= FREE_KEY_DAILY_LIMIT) {
-    saveDB(db);
-    return res.status(429).json({ error: "Hôm nay bạn đã đạt giới hạn lấy key miễn phí." });
-  }
-
-  const key = newKey();
-  const token = randomToken(18);
-  const createdAt = nowMs();
-  const expiresAt = FREE_KEY_EXPIRES_AT_END_OF_DAY ? endOfDayMs() : (createdAt + FREE_KEY_TTL_MS);
-
-  db.keys[key] = {
-    key,
-    type: "free",
-    createdAt,
-    expiresAt,
-    createdIp: ip,
-    deviceId: "", // sẽ bind lúc verify (nếu bật)
-  };
-
-  // claim token sống 15 phút (chỉ để mở trang nhận key)
-  db.claims[token] = {
-    token,
-    key,
-    createdAt,
-    expiresAt: createdAt + 15 * 60 * 1000,
-  };
-
-  db.ipStats[statKey] = { lastAt: createdAt, count: (s.count || 0) + 1 };
-  saveDB(db);
-
-  const claimUrl = `${BASE_URL}/claim/${encodeURIComponent(token)}`;
-  res.json({ ok: true, claimUrl, expiresAt });
 });
 
 // Trang nhận key
 app.get("/claim/:token", (req, res) => {
   const token = String(req.params.token || "");
+  const baseUrl = getBaseUrl(req);
+
   const db = loadDB();
   cleanupExpired(db);
 
   const c = db.claims[token];
   if (!c) {
-    saveDB(db);
+    try {
+      saveDB(db);
+    } catch {}
     return res
       .status(404)
       .type("html")
       .send(
         pageShell({
           title: "Nhận key",
+          baseUrl,
           bodyHtml: `<div class="panel"><h2>Link không hợp lệ / đã hết hạn</h2><div class="msg">Vui lòng quay lại trang chủ để lấy key mới.</div><div style="height:12px"></div><a class="btn secondary" href="/">Về trang chủ</a></div>`,
         })
       );
@@ -397,13 +456,16 @@ app.get("/claim/:token", (req, res) => {
   const rec = db.keys[c.key];
   if (!rec) {
     delete db.claims[token];
-    saveDB(db);
+    try {
+      saveDB(db);
+    } catch {}
     return res
       .status(404)
       .type("html")
       .send(
         pageShell({
           title: "Nhận key",
+          baseUrl,
           bodyHtml: `<div class="panel"><h2>Key không tồn tại</h2><div class="msg">Vui lòng lấy key mới.</div><div style="height:12px"></div><a class="btn secondary" href="/">Về trang chủ</a></div>`,
         })
       );
@@ -437,60 +499,70 @@ app.get("/claim/:token", (req, res) => {
     });
   `;
 
-  saveDB(db);
-  res.type("html").send(pageShell({ title: "Nhận key", bodyHtml, extraScript }));
+  try {
+    saveDB(db);
+  } catch {}
+  res.type("html").send(pageShell({ title: "Nhận key", bodyHtml, extraScript, baseUrl }));
 });
 
 // App verify key
 app.post("/api/verify", (req, res) => {
-  const key = String(req.body?.key || "").trim();
-  const deviceId = normalizeDeviceId(req.body?.deviceId);
-  const ip = getClientIp(req);
+  try {
+    const key = String(req.body?.key || "").trim();
+    const deviceId = normalizeDeviceId(req.body?.deviceId);
+    const ip = getClientIp(req);
 
-  if (!key) return res.status(400).json({ ok: false, error: "Thiếu key" });
+    if (!key) return res.status(400).json({ ok: false, error: "Thiếu key" });
 
-  const db = loadDB();
-  cleanupExpired(db);
+    const db = loadDB();
+    cleanupExpired(db);
 
-  const rec = db.keys[key];
-  if (!rec) {
-    saveDB(db);
-    return res.status(401).json({ ok: false, error: "Key không hợp lệ" });
-  }
-  if (rec.expiresAt && rec.expiresAt <= nowMs()) {
-    delete db.keys[key];
-    saveDB(db);
-    return res.status(401).json({ ok: false, error: "Key đã hết hạn" });
-  }
-
-  if (BIND_TO_DEVICE_ID) {
-    if (!deviceId) {
+    const rec = db.keys[key];
+    if (!rec) {
       saveDB(db);
-      return res.status(400).json({ ok: false, error: "Thiếu deviceId" });
+      return res.status(401).json({ ok: false, error: "Key không hợp lệ" });
     }
-    if (!rec.deviceId) {
-      rec.deviceId = deviceId; // bind lần đầu
-    } else if (rec.deviceId !== deviceId) {
+    if (rec.expiresAt && rec.expiresAt <= nowMs()) {
+      delete db.keys[key];
       saveDB(db);
-      return res.status(401).json({ ok: false, error: "Key đã được gắn cho thiết bị khác" });
+      return res.status(401).json({ ok: false, error: "Key đã hết hạn" });
     }
+
+    if (BIND_TO_DEVICE_ID) {
+      if (!deviceId) {
+        saveDB(db);
+        return res.status(400).json({ ok: false, error: "Thiếu deviceId" });
+      }
+      if (!rec.deviceId) {
+        rec.deviceId = deviceId; // bind lần đầu
+      } else if (rec.deviceId !== deviceId) {
+        saveDB(db);
+        return res.status(401).json({ ok: false, error: "Key đã được gắn cho thiết bị khác" });
+      }
+    }
+
+    rec.lastVerifyAt = nowMs();
+    rec.lastVerifyIp = ip;
+    db.keys[key] = rec;
+    saveDB(db);
+
+    return res.json({
+      ok: true,
+      type: rec.type,
+      expiresAt: rec.expiresAt,
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("verify error:", e);
+    return res.status(500).json({ ok: false, error: "Server lỗi khi verify" });
   }
-
-  rec.lastVerifyAt = nowMs();
-  rec.lastVerifyIp = ip;
-  db.keys[key] = rec;
-  saveDB(db);
-
-  return res.json({
-    ok: true,
-    type: rec.type,
-    expiresAt: rec.expiresAt,
-  });
 });
 
 // ====== START ======
+// NOTE: Nếu bạn deploy kiểu server truyền thống (Render/Railway/VPS) thì dùng app.listen như dưới.
+// Nếu bạn dùng Vercel, hãy nói mình biết để mình chuyển sang serverless handler (không dùng listen).
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console
-  console.log(`Key server running at ${BASE_URL}`);
+  console.log(`Key server running (port=${PORT}) dataFile=${DATA_FILE} baseUrl=${process.env.BASE_URL || "(auto)"}`);
 });
 
