@@ -1,16 +1,15 @@
 const http = require("http");
-const url = require("url");
+const { URL } = require("url");
 const crypto = require("crypto");
 const fs = require("fs");
 const https = require("https");
 
 const LINK4M_TOKEN = "6899fc9d171a1f07277dde22";
 
-// DOMAIN RENDER CỦA M
 const DOMAIN = "https://key-server-zfwa.onrender.com";
 
-// TRANG NHẬN KEY
-const KEY_PAGE = "https://lanhakk.blogspot.com/2026/01/lanh-ak.html";
+const KEY_PAGE =
+"https://lanhakk.blogspot.com/2026/01/lanh-ak.html";
 
 const PORT = process.env.PORT || 3000;
 const DB_FILE = "database.json";
@@ -18,265 +17,93 @@ const DB_FILE = "database.json";
 let database = {};
 
 if (fs.existsSync(DB_FILE)) {
-database = JSON.parse(fs.readFileSync(DB_FILE));
+    database = JSON.parse(fs.readFileSync(DB_FILE));
 }
 
 function saveDB() {
-fs.writeFileSync(DB_FILE, JSON.stringify(database, null, 2));
+    fs.writeFileSync(
+        DB_FILE,
+        JSON.stringify(database, null, 2)
+    );
 }
 
 function json(res, data) {
-res.writeHead(200, {
-"Content-Type": "application/json; charset=UTF-8"
-});
 
-res.end(JSON.stringify(data));
+    res.writeHead(200, {
+        "Content-Type":
+        "application/json; charset=UTF-8"
+    });
 
+    res.end(JSON.stringify(data));
 }
 
 function generateKey() {
-return "bon_" + crypto.randomBytes(5).toString("hex");
+    return "bon_" +
+    crypto.randomBytes(5).toString("hex");
 }
 
 function shortenLink(longUrl, callback) {
 
-const apiUrl =
+    const apiUrl =
     `https://link4m.co/api-shorten/v2?api=${LINK4M_TOKEN}&url=${encodeURIComponent(longUrl)}`;
 
-https.get(apiUrl, (resp) => {
+    https.get(apiUrl, (resp) => {
 
-    let data = "";
+        let data = "";
 
-    resp.on("data", chunk => data += chunk);
+        resp.on("data", chunk => {
+            data += chunk;
+        });
 
-    resp.on("end", () => {
+        resp.on("end", () => {
 
-        try {
+            try {
 
-            const result = JSON.parse(data);
+                const result = JSON.parse(data);
 
-            callback(result);
+                callback(result);
 
-        } catch {
+            } catch {
 
-            callback(null);
-        }
+                callback(null);
+            }
+        });
+
+    }).on("error", () => {
+
+        callback(null);
     });
-
-}).on("error", () => {
-
-    callback(null);
-});
-
 }
 
 const server = http.createServer((req, res) => {
 
-const q = url.parse(req.url, true);
+    const q =
+    new URL(req.url,
+    `http://${req.headers.host}`);
 
-// =========================
-// ROOT
-// =========================
-if (q.pathname === "/") {
+    // =========================
+    // GIAO DIỆN CHÍNH
+    // =========================
 
-    return json(res, {
-        status: true,
-        server: "online",
-        name: "MTool Max API"
-    });
-}
+    if (q.pathname === "/") {
 
-// =========================
-// API CHECK
-// =========================
-if (q.pathname === "/api") {
-
-    return json(res, {
-        success: true
-    });
-}
-
-// =========================
-// REGISTER DEVICE
-// =========================
-if (q.pathname === "/api/devices/register") {
-
-    return json(res, {
-        success: true,
-        message: "registered"
-    });
-}
-
-// =========================
-// CREATE KEY
-// =========================
-if (q.pathname === "/api/apikey/create") {
-
-    const device_id = q.query.device_id;
-
-    if (!device_id) {
-
-        return json(res, {
-            success: false,
-            error: "Missing device_id"
+        res.writeHead(200, {
+            "Content-Type":
+            "text/html; charset=UTF-8"
         });
-    }
 
-    const now = Math.floor(Date.now() / 1000);
+        return res.end(`
+<!DOCTYPE html>
+<html lang="vi">
 
-    // còn hạn
-    if (
-        database[device_id] &&
-        database[device_id].status === "verified" &&
-        database[device_id].expires_at > now
-    ) {
-
-        return json(res, {
-            success: true,
-            message: "Key still active",
-            api_key: database[device_id].key,
-            expires_at: database[device_id].expires_at
-        });
-    }
-
-    const key = generateKey();
-
-    database[device_id] = {
-        key: key,
-        status: "pending",
-        expires_at: 0
-    };
-
-    saveDB();
-
-    const callbackUrl =
-        `${DOMAIN}/api/apikey/callback?key=${key}`;
-
-    shortenLink(callbackUrl, (result) => {
-
-        if (!result) {
-
-            return json(res, {
-                success: false,
-                error: "Link4m error"
-            });
-        }
-
-        return json(res, {
-            success: true,
-            api_key: key,
-            shortened_link:
-                result.shortenedUrl || callbackUrl
-        });
-    });
-
-    return;
-}
-
-// =========================
-// CALLBACK VERIFY
-// =========================
-if (q.pathname === "/api/apikey/callback") {
-
-    const key = q.query.key;
-
-    for (let device in database) {
-
-        if (database[device].key === key) {
-
-            database[device].status = "verified";
-
-            database[device].expires_at =
-                Math.floor(Date.now() / 1000) + 86400;
-
-            saveDB();
-
-            res.writeHead(302, {
-                Location: `${KEY_PAGE}?ma=${key}`
-            });
-
-            return res.end();
-        }
-    }
-
-    return res.end("Key not found");
-}
-
-// =========================
-// CHECK KEY
-// =========================
-if (q.pathname === "/api/apikey/status.sec") {
-
-    const apiKey = q.query.api_key;
-    const device_id = q.query.device_id;
-
-    if (!database[device_id]) {
-
-        return json(res, {
-            success: false,
-            is_expired: true
-        });
-    }
-
-    const record = database[device_id];
-
-    const now = Math.floor(Date.now() / 1000);
-
-    if (
-        record.key !== apiKey ||
-        record.status !== "verified"
-    ) {
-
-        return json(res, {
-            success: false,
-            is_expired: true
-        });
-    }
-
-    return json(res, {
-        success: true,
-        expires_at: record.expires_at,
-        device_limit: 1,
-        devices_used: 1,
-        is_expired: now > record.expires_at,
-        devices: [
-            {
-                device_id: device_id
-            }
-        ]
-    });
-}
-
-// =========================
-// USER INFO
-// =========================
-if (q.pathname === "/api/users/me") {
-
-    return json(res, {
-        success: true,
-        user: {
-            name: "Admin",
-            role: "owner"
-        }
-    });
-}
-
-// =========================
-// GIAO DIỆN WEB ĐẸP
-// =========================
-
-if (q.pathname === "/") {
-
-res.writeHead(200, {
-    "Content-Type": "text/html; charset=UTF-8"
-});
-
-return res.end(`
-
-<!DOCTYPE html><html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0"><title>MTool Max Server</title><style>
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>MTool Max</title>
+
+<style>
 
 body{
     margin:0;
@@ -299,8 +126,8 @@ body{
     background:#0f172a;
     border-radius:25px;
     padding:30px;
-    box-shadow:0 0 30px rgba(0,255,255,0.2);
     text-align:center;
+    box-shadow:0 0 30px rgba(0,255,255,0.2);
 }
 
 .logo{
@@ -312,7 +139,6 @@ body{
 .status{
     margin-top:10px;
     color:#4ade80;
-    font-size:18px;
 }
 
 .info{
@@ -323,61 +149,86 @@ body{
 }
 
 .btn{
-    margin-top:25px;
     width:100%;
     height:50px;
+    margin-top:20px;
     border:none;
     border-radius:15px;
     background:#06b6d4;
     color:white;
     font-size:18px;
     cursor:pointer;
-    transition:0.3s;
-}
-
-.btn:hover{
-    background:#0891b2;
 }
 
 .footer{
     margin-top:20px;
     color:#94a3b8;
-    font-size:14px;
 }
 
-</style></head><body><div class="container"><div class="card"><div class="logo">
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="card">
+
+<div class="logo">
 MTOOL MAX
-</div><div class="status">
+</div>
+
+<div class="status">
 ● SERVER ONLINE
-</div><div class="info">
+</div>
+
+<div class="info">
 <p>API Status : Active</p>
 <p>Link4M : Connected</p>
 <p>Key System : Running</p>
-</div><button class="btn"
+</div>
+
+<button class="btn"
 onclick="window.location='/api/keypage'">
+
 TẠO KEY
+
 </button>
 
 <div class="footer">
 Powered By LANH AK
-</div></div></div></body>
+</div>
+
+</div>
+
+</div>
+
+</body>
 </html>
 `);
-}// =========================
-// PAGE TẠO KEY
-// =========================
+    }
 
-if (q.pathname === "/api/keypage") {
+    // =========================
+    // PAGE TẠO KEY
+    // =========================
 
-res.writeHead(200, {
-    "Content-Type": "text/html; charset=UTF-8"
-});
+    if (q.pathname === "/api/keypage") {
 
-return res.end(`
+        res.writeHead(200, {
+            "Content-Type":
+            "text/html; charset=UTF-8"
+        });
 
-<!DOCTYPE html><html lang="vi">
+        return res.end(`
+<!DOCTYPE html>
+<html lang="vi">
+
 <head>
-<meta charset="UTF-8"><title>Create Key</title><style>
+<meta charset="UTF-8">
+
+<title>Create Key</title>
+
+<style>
 
 body{
     background:#020617;
@@ -417,12 +268,33 @@ button{
     font-size:18px;
 }
 
-</style></head><body><div class="box"><h1>MTOOL KEY SYSTEM</h1><input id="device"
+a{
+    color:#22d3ee;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+<h1>MTOOL KEY SYSTEM</h1>
+
+<input id="device"
 placeholder="Nhập Device ID">
 
 <button onclick="createKey()">
+
 LẤY KEY
-</button><div id="result"></div></div><script>
+
+</button>
+
+<div id="result"></div>
+
+</div>
+
+<script>
 
 async function createKey(){
 
@@ -430,7 +302,8 @@ async function createKey(){
     document.getElementById("device").value;
 
     const req = await fetch(
-    "/api/apikey/create?device_id=" + device
+    "/api/apikey/create?device_id="
+    + device
     );
 
     const data = await req.json();
@@ -439,15 +312,24 @@ async function createKey(){
 
         document.getElementById("result")
         .innerHTML = \`
+
         <p style="margin-top:20px">
         Link Vượt:
         </p>
 
         <a href="\${data.shortened_link}"
-        target="_blank"
-        style="color:#22d3ee">
+        target="_blank">
+
         \${data.shortened_link}
+
         </a>
+
+        <p style="margin-top:15px">
+        Key:
+        </p>
+
+        <input value="\${data.api_key}" readonly>
+
         \`;
 
     }else{
@@ -456,23 +338,275 @@ async function createKey(){
     }
 }
 
-</script></body>
+</script>
+
+</body>
 </html>
 `);
-}
+    }
 
-// =========================
-// DEFAULT
-// =========================
-json(res, {
-    success: false,
-    message: "Endpoint not found"
-});
+    // =========================
+    // API CHECK
+    // =========================
+
+    if (q.pathname === "/api") {
+
+        return json(res, {
+            success: true
+        });
+    }
+
+    // =========================
+    // FIX SPLASH APP
+    // =========================
+
+    if (q.pathname === "/api/config") {
+
+        return json(res, {
+            success: true,
+            maintenance: false,
+            version: "2.6.9",
+            update_required: false
+        });
+    }
+
+    if (q.pathname === "/api/check") {
+
+        return json(res, {
+            success: true,
+            status: "ok"
+        });
+    }
+
+    if (q.pathname === "/api/version") {
+
+        return json(res, {
+            success: true,
+            version: "2.6.9"
+        });
+    }
+
+    if (q.pathname === "/ping") {
+
+        return json(res, {
+            success: true,
+            ping: "ok"
+        });
+    }
+
+    // =========================
+    // REGISTER DEVICE
+    // =========================
+
+    if (q.pathname === "/api/devices/register") {
+
+        return json(res, {
+            success: true,
+            message: "registered"
+        });
+    }
+
+    // =========================
+    // CREATE KEY
+    // =========================
+
+    if (q.pathname === "/api/apikey/create") {
+
+        const device_id =
+        q.searchParams.get("device_id");
+
+        if (!device_id) {
+
+            return json(res, {
+                success: false,
+                error: "Missing device_id"
+            });
+        }
+
+        const now =
+        Math.floor(Date.now() / 1000);
+
+        if (
+            database[device_id] &&
+            database[device_id].status
+            === "verified" &&
+            database[device_id].expires_at > now
+        ) {
+
+            return json(res, {
+                success: true,
+                message: "Key still active",
+                api_key:
+                database[device_id].key,
+                expires_at:
+                database[device_id].expires_at
+            });
+        }
+
+        const key = generateKey();
+
+        database[device_id] = {
+            key: key,
+            status: "pending",
+            expires_at: 0
+        };
+
+        saveDB();
+
+        const callbackUrl =
+        `${DOMAIN}/api/apikey/callback?key=${key}`;
+
+        shortenLink(callbackUrl,
+        (result) => {
+
+            if (!result) {
+
+                return json(res, {
+                    success: false,
+                    error: "Link4m error"
+                });
+            }
+
+            return json(res, {
+                success: true,
+                api_key: key,
+                shortened_link:
+                result.shortenedUrl
+                || callbackUrl
+            });
+        });
+
+        return;
+    }
+
+    // =========================
+    // CALLBACK VERIFY
+    // =========================
+
+    if (q.pathname ===
+    "/api/apikey/callback") {
+
+        const key =
+        q.searchParams.get("key");
+
+        for (let device in database) {
+
+            if (
+                database[device].key
+                === key
+            ) {
+
+                database[device].status =
+                "verified";
+
+                database[device]
+                .expires_at =
+
+                Math.floor(
+                    Date.now() / 1000
+                ) + 86400;
+
+                saveDB();
+
+                res.writeHead(302, {
+                    Location:
+                    `${KEY_PAGE}?ma=${key}`
+                });
+
+                return res.end();
+            }
+        }
+
+        return res.end("Key not found");
+    }
+
+    // =========================
+    // CHECK KEY
+    // =========================
+
+    if (q.pathname ===
+    "/api/apikey/status.sec") {
+
+        const apiKey =
+        q.searchParams.get("api_key");
+
+        const device_id =
+        q.searchParams.get("device_id");
+
+        if (!database[device_id]) {
+
+            return json(res, {
+                success: false,
+                is_expired: true
+            });
+        }
+
+        const record =
+        database[device_id];
+
+        const now =
+        Math.floor(Date.now() / 1000);
+
+        if (
+            record.key !== apiKey ||
+            record.status !== "verified"
+        ) {
+
+            return json(res, {
+                success: false,
+                is_expired: true
+            });
+        }
+
+        return json(res, {
+            success: true,
+            expires_at:
+            record.expires_at,
+            device_limit: 1,
+            devices_used: 1,
+            is_expired:
+            now > record.expires_at,
+            devices: [
+                {
+                    device_id:
+                    device_id
+                }
+            ]
+        });
+    }
+
+    // =========================
+    // USER INFO
+    // =========================
+
+    if (q.pathname ===
+    "/api/users/me") {
+
+        return json(res, {
+            success: true,
+            user: {
+                name: "Admin",
+                role: "owner"
+            }
+        });
+    }
+
+    // =========================
+    // DEFAULT
+    // =========================
+
+    return json(res, {
+        success: false,
+        message: "Endpoint not found"
+    });
 
 });
 
 server.listen(PORT, () => {
 
-console.log("Server running on port", PORT);
+    console.log(
+    "Server running on port",
+    PORT
+    );
 
 });
