@@ -305,22 +305,35 @@ const server = http.createServer((req, res) => {
     // ================= CHECK APP (SMALI COMPAT) =================
     if (q.pathname === "/check") {
 
-        const key = q.searchParams.get("key") || "";
-        const device = q.searchParams.get("device") || "";
+    const key = (q.searchParams.get("key") || "").trim();
+    const device = (q.searchParams.get("device") || "").trim().toUpperCase();
 
-        const data = db[device];
+    const data = db[device];
 
-        if (!data) return res.end("INVALID_KEY");
+    if (!data) {
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        return res.end("INVALID_KEY");
+    }
 
-        const now = Math.floor(Date.now() / 1000);
+    const now = Math.floor(Date.now() / 1000);
 
-        if (data.key !== key) return res.end("INVALID_KEY");
+    if (data.key !== key) {
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        return res.end("INVALID_KEY");
+    }
 
-        if (data.status !== "verified") return res.end("PENDING");
+    if (data.status !== "verified") {
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        return res.end("PENDING");
+    }
 
-        if (now > data.expires) return res.end("EXPIRED");
+    if (now > data.expires) {
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        return res.end("EXPIRED");
+    }
 
-        return res.end("OK");
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    return res.end("OK");
     }
 
     res.writeHead(404);
