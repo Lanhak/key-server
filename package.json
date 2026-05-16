@@ -1,8 +1,14 @@
 {
-"name": "mtool-max",
-"version": "1.0.0",
-"main": "server.js",
-"scripts": {
-"start": "node server.js"
-}
+  "name": "license-server",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "lowdb": "^1.0.0",
+    "moment": "^2.30.1"
+  }
 }
