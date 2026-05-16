@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>License Dashboard</title>
+<style>
+body {
+    background: #0f172a;
+    color: white;
+    font-family: Arial;
+    padding: 30px;
+}
+
+.card {
+    background: #1e293b;
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border-radius: 10px;
+    border: none;
+}
+
+button {
+    margin-top: 15px;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    background: #06b6d4;
+    color: white;
+    cursor: pointer;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+td, th {
+    border-bottom: 1px solid #334155;
+    padding: 12px;
+}
+</style>
+</head>
+<body>
+
+<h1>License Dashboard</h1>
+
+<div class="card">
+    <h2>Tạo Key</h2>
+
+    <input id="key" placeholder="Nhập key">
+    <input id="days" placeholder="Số ngày">
+
+    <button onclick="createKey()">Tạo Key</button>
+</div>
+
+<div class="card">
+    <h2>Danh sách Key</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Key</th>
+                <th>Expire</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+
+        <tbody id="list"></tbody>
+    </table>
+</div>
+
+<script>
+async function loadKeys() {
+    const res = await fetch('/api/list');
+    const data = await res.json();
+
+    let html = '';
+
+    data.forEach(k => {
+        html += `
+        <tr>
+            <td>${k.key}</td>
+            <td>${k.expire}</td>
+            <td>${k.status}</td>
+        </tr>
+        `;
+    });
+
+    document.getElementById('list').innerHTML = html;
+}
+
+async function createKey() {
+    const key = document.getElementById('key').value;
+    const days = document.getElementById('days').value;
+
+    await fetch('/api/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            key,
+            days
+        })
+    });
+
+    loadKeys();
+}
+
+loadKeys();
+</script>
+
+</body>
+</html>
