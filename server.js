@@ -110,7 +110,11 @@ app.use((req, res, next) => {
 // ========================================
 // HOME PAGE
 // ========================================
+app.get('/', (req, res) => {
 
+res.send(`app.get('/', (req, res) => {
+
+res.send(`
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -460,6 +464,9 @@ AI GENERATED MOCK SERVER UI
 
 </body>
 </html>
+`);
+
+});
 
 // ========================================
 // USER
