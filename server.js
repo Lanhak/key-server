@@ -24,12 +24,13 @@ const ADMIN_USER = "lanhak";
 const ADMIN_PASS = "ttht2007";
 
 const DATABASE = path.join(__dirname, "database.json");
-console.log("API HIT:", req.query);
+
 // =========================
 // MIDDLEWARE
 // =========================
 
 app.use(cors());
+console.log("API HIT:", req.query);
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
