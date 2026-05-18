@@ -115,103 +115,354 @@ app.get('/', (req, res) => {
 
     res.send(`
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Mock API Server</title>
+<title>AI MOCK SERVER</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
 
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
 body{
-    background:#0f172a;
+    background:#020617;
     color:white;
-    font-family:Arial;
-    padding:30px;
+    font-family:'Poppins',sans-serif;
+    overflow-x:hidden;
 }
 
-.card{
-    background:#1e293b;
-    padding:20px;
-    border-radius:15px;
-    margin-bottom:20px;
-    box-shadow:0 0 20px rgba(0,0,0,0.3);
+/* ========================= */
+/* BACKGROUND */
+/* ========================= */
+
+.bg{
+    position:fixed;
+    width:100%;
+    height:100%;
+    top:0;
+    left:0;
+    background:
+    radial-gradient(circle at top left,#0ea5e955,transparent 30%),
+    radial-gradient(circle at bottom right,#7c3aed55,transparent 30%);
+    z-index:-1;
 }
 
-h1{
+/* ========================= */
+/* HEADER */
+/* ========================= */
+
+header{
+    padding:25px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+    backdrop-filter:blur(10px);
+}
+
+.logo{
+    font-size:28px;
+    font-weight:700;
     color:#38bdf8;
 }
 
+.status{
+    padding:10px 18px;
+    border-radius:999px;
+    background:#16a34a22;
+    color:#4ade80;
+    border:1px solid #22c55e44;
+    font-size:14px;
+}
+
+/* ========================= */
+/* MAIN */
+/* ========================= */
+
+.container{
+    max-width:1200px;
+    margin:auto;
+    padding:40px 20px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:25px;
+}
+
+.card{
+    background:rgba(15,23,42,0.7);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:24px;
+    padding:25px;
+    backdrop-filter:blur(20px);
+    transition:0.3s;
+    box-shadow:0 10px 30px rgba(0,0,0,0.4);
+}
+
+.card:hover{
+    transform:translateY(-5px);
+    border-color:#38bdf8;
+}
+
+.card h2{
+    font-size:22px;
+    margin-bottom:20px;
+    color:#38bdf8;
+}
+
+.info{
+    margin-bottom:15px;
+}
+
+.label{
+    color:#94a3b8;
+    font-size:14px;
+}
+
+.value{
+    margin-top:5px;
+    font-size:18px;
+    font-weight:600;
+}
+
+/* ========================= */
+/* API LIST */
+/* ========================= */
+
+.api-list{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+}
+
 .api{
-    background:#111827;
-    padding:10px;
-    border-radius:10px;
-    margin-top:10px;
+    background:#0f172a;
+    border-radius:14px;
+    padding:14px;
+    border:1px solid rgba(255,255,255,0.05);
+    transition:0.3s;
 }
 
-.green{
-    color:#22c55e;
+.api:hover{
+    border-color:#38bdf8;
+    transform:scale(1.02);
 }
 
-.orange{
-    color:#f59e0b;
+.method{
+    font-size:12px;
+    font-weight:700;
+    padding:5px 10px;
+    border-radius:999px;
+    display:inline-block;
+    margin-bottom:10px;
+}
+
+.get{
+    background:#16a34a22;
+    color:#4ade80;
+}
+
+.post{
+    background:#ea580c22;
+    color:#fb923c;
+}
+
+.path{
+    font-size:15px;
+    word-break:break-all;
+}
+
+/* ========================= */
+/* FOOTER */
+/* ========================= */
+
+footer{
+    text-align:center;
+    padding:40px;
+    color:#64748b;
+    font-size:14px;
+}
+
+/* ========================= */
+/* ANIMATION */
+/* ========================= */
+
+.fade{
+    animation:fade 1s ease;
+}
+
+@keyframes fade{
+    from{
+        opacity:0;
+        transform:translateY(20px);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
 }
 
 </style>
-
 </head>
 
 <body>
 
-<div class="card">
+<div class="bg"></div>
 
-<h1>🚀 MOCK API SERVER</h1>
+<header>
 
-<p class="green">
-SERVER ONLINE
-</p>
-
-<p>
-User : ${USER.username}
-</p>
-
-<p>
-Coin : ${USER.coin}
-</p>
-
-<p>
-VIP : ${USER.vip}
-</p>
-
+<div class="logo">
+🚀 AI MOCK SERVER
 </div>
 
-<div class="card">
-
-<h2>📡 API LIST</h2>
-
-<div class="api">GET /api/users/me</div>
-<div class="api">GET /api/job</div>
-<div class="api">POST /api/job/check_job_success</div>
-<div class="api">POST /api/job/check-job-valid</div>
-<div class="api">POST /api/devices/register</div>
-<div class="api">POST /api/tiktok-account</div>
-<div class="api">POST /api/fb-account</div>
-<div class="api">POST /api/instagram-account</div>
-
+<div class="status">
+● ONLINE
 </div>
+
+</header>
+
+<div class="container">
+
+<div class="grid fade">
+
+<!-- ================= -->
+<!-- USER CARD -->
+<!-- ================= -->
 
 <div class="card">
 
-<h2>🖥 SERVER INFO</h2>
+<h2>👤 User Info</h2>
 
-<p>Platform : ${os.platform()}</p>
-<p>RAM : ${(os.totalmem()/1024/1024/1024).toFixed(2)} GB</p>
-<p>Status : <span class="orange">RUNNING</span></p>
+<div class="info">
+<div class="label">Username</div>
+<div class="value">guest_user</div>
+</div>
+
+<div class="info">
+<div class="label">Coin</div>
+<div class="value">1000</div>
+</div>
+
+<div class="info">
+<div class="label">VIP</div>
+<div class="value">False</div>
+</div>
+
+<div class="info">
+<div class="label">Token</div>
+<div class="value">
+token_xxxxx
+</div>
+</div>
 
 </div>
+
+<!-- ================= -->
+<!-- SERVER CARD -->
+<!-- ================= -->
+
+<div class="card">
+
+<h2>🖥 Server Info</h2>
+
+<div class="info">
+<div class="label">Platform</div>
+<div class="value">Linux</div>
+</div>
+
+<div class="info">
+<div class="label">RAM</div>
+<div class="value">30.65 GB</div>
+</div>
+
+<div class="info">
+<div class="label">Port</div>
+<div class="value">3000</div>
+</div>
+
+<div class="info">
+<div class="label">Status</div>
+<div class="value" style="color:#4ade80;">
+Running
+</div>
+</div>
+
+</div>
+
+</div>
+
+<!-- ================= -->
+<!-- API CARD -->
+<!-- ================= -->
+
+<div class="card fade" style="margin-top:25px;">
+
+<h2>📡 API Endpoint</h2>
+
+<div class="api-list">
+
+<div class="api">
+<div class="method get">GET</div>
+<div class="path">/api/users/me</div>
+</div>
+
+<div class="api">
+<div class="method get">GET</div>
+<div class="path">/api/job</div>
+</div>
+
+<div class="api">
+<div class="method post">POST</div>
+<div class="path">/api/job/check_job_success</div>
+</div>
+
+<div class="api">
+<div class="method post">POST</div>
+<div class="path">/api/job/check-job-valid</div>
+</div>
+
+<div class="api">
+<div class="method post">POST</div>
+<div class="path">/api/devices/register</div>
+</div>
+
+<div class="api">
+<div class="method post">POST</div>
+<div class="path">/api/tiktok-account</div>
+</div>
+
+<div class="api">
+<div class="method post">POST</div>
+<div class="path">/api/fb-account</div>
+</div>
+
+<div class="api">
+<div class="method post">POST</div>
+<div class="path">/api/instagram-account</div>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<footer>
+AI GENERATED MOCK SERVER UI
+</footer>
 
 </body>
 </html>
-`);
 
 });
 
