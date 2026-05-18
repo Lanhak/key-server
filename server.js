@@ -113,7 +113,7 @@ app.use((req, res, next) => {
 
 app.get('/', (req, res) => {
 
-    res.send(`
+    res.send(String.raw`
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -463,6 +463,8 @@ AI GENERATED MOCK SERVER UI
 
 </body>
 </html>
+
+`);
 
 });
 
