@@ -1,121 +1,104 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>License Dashboard</title>
-<style>
-body {
-    background: #0f172a;
-    color: white;
-    font-family: Arial;
-    padding: 30px;
-}
-
-.card {
-    background: #1e293b;
-    padding: 20px;
-    border-radius: 15px;
-    margin-bottom: 20px;
-}
-
-input {
-    width: 100%;
-    padding: 12px;
-    margin-top: 10px;
-    border-radius: 10px;
-    border: none;
-}
-
-button {
-    margin-top: 15px;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 10px;
-    background: #06b6d4;
-    color: white;
-    cursor: pointer;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-td, th {
-    border-bottom: 1px solid #334155;
-    padding: 12px;
-}
-</style>
+    <title>APK Reverse Live Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/vis-network/standalone/umd/vis-network.min.js"></script>
 </head>
-<body>
 
-<h1>License Dashboard</h1>
+<body style="margin:0; font-family:Arial;">
 
-<div class="card">
-    <h2>Tạo Key</h2>
+<div style="display:flex; height:100vh;">
 
-    <input id="key" placeholder="Nhập key">
-    <input id="days" placeholder="Số ngày">
+    <!-- GRAPH -->
+    <div id="graph" style="width:50%; border-right:1px solid #ccc;"></div>
 
-    <button onclick="createKey()">Tạo Key</button>
-</div>
+    <!-- LIVE LOG -->
+    <div style="width:50%; display:flex; flex-direction:column;">
 
-<div class="card">
-    <h2>Danh sách Key</h2>
+        <div style="padding:10px; background:#111; color:white;">
+            LIVE MITM + REPLAY PANEL
+        </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Key</th>
-                <th>Expire</th>
-                <th>Status</th>
-            </tr>
-        </thead>
+        <div id="log" style="flex:1; overflow:auto; padding:10px;"></div>
 
-        <tbody id="list"></tbody>
-    </table>
+        <button onclick="replayLast()">REPLAY LAST REQUEST</button>
+    </div>
+
 </div>
 
 <script>
-async function loadKeys() {
-    const res = await fetch('/api/list');
-    const data = await res.json();
+let lastRequest = null;
 
-    let html = '';
+// =========================
+// GRAPH (STATIC)
+fetch("/graph")
+.then(r=>r.json())
+.then(data=>{
+    const nodes = new vis.DataSet(
+        data.nodes.map(n=>({id:n,label:n}))
+    );
 
-    data.forEach(k => {
-        html += `
-        <tr>
-            <td>${k.key}</td>
-            <td>${k.expire}</td>
-            <td>${k.status}</td>
-        </tr>
-        `;
-    });
+    const edges = new vis.DataSet(
+        data.edges.map(e=>({from:e.from,to:e.to}))
+    );
 
-    document.getElementById('list').innerHTML = html;
+    new vis.Network(document.getElementById("graph"), {
+        nodes, edges
+    }, { physics:true });
+});
+
+// =========================
+// WS REALTIME MITM
+const ws = new WebSocket("ws://localhost:8081");
+
+ws.onmessage = (msg) => {
+    const data = JSON.parse(msg.data);
+
+    const log = document.getElementById("log");
+
+    const div = document.createElement("div");
+    div.style.borderBottom = "1px solid #ddd";
+    div.style.padding = "5px";
+
+    div.innerHTML = `
+        <b>${data.type}</b><br/>
+        ${data.url || ""}<br/>
+        <button onclick='selectReq(${JSON.stringify(data)})'>select</button>
+    `;
+
+    log.appendChild(div);
+
+    if(data.type === "request"){
+        lastRequest = data;
+    }
+};
+
+// =========================
+// SELECT REQUEST
+function selectReq(data){
+    lastRequest = data;
+    alert("Selected request:\n" + data.url);
 }
 
-async function createKey() {
-    const key = document.getElementById('key').value;
-    const days = document.getElementById('days').value;
+// =========================
+// REPLAY API
+function replayLast(){
 
-    await fetch('/api/create', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            key,
-            days
-        })
+    if(!lastRequest){
+        alert("No request selected");
+        return;
+    }
+
+    fetch("/replay", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify(lastRequest)
+    })
+    .then(r=>r.json())
+    .then(res=>{
+        alert("Replay result:\n" + JSON.stringify(res,null,2));
     });
-
-    loadKeys();
 }
-
-loadKeys();
 </script>
 
 </body>
