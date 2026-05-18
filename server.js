@@ -20,11 +20,11 @@ const PORT = process.env.PORT || 3000;
 
 const LINK4M_TOKEN = "6899fc9d171a1f07277dde22";
 
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "admin123";
+const ADMIN_USER = "lanhak";
+const ADMIN_PASS = "ttht2007";
 
 const DATABASE = path.join(__dirname, "database.json");
-
+console.log("API HIT:", req.query);
 // =========================
 // MIDDLEWARE
 // =========================
