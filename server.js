@@ -536,47 +536,41 @@ app.get("/api", (req, res) => {
 
     const type = req.query.api;
 
-    if (type !== "check") {
-        return res.send("ERROR");
-    }
+    if (type === "check") {
+        // giữ nguyên code check của bạn
+        const key = req.query.key;
+        const hwid = req.query.hwid;
 
-    const key = req.query.key;
-    const hwid = req.query.hwid;
+        const db = loadDB();
 
-    const db = loadDB();
+        if (!db.keys[key]) return res.send("LOCKED");
 
-    if (!db.keys[key]) {
-        return res.send("LOCKED");
-    }
+        const data = db.keys[key];
 
-    const data = db.keys[key];
+        if (data.status !== "ACTIVE") return res.send("LOCKED");
 
-    if (data.status !== "ACTIVE") {
-        return res.send("LOCKED");
-    }
+        if (Date.now() > data.expire) return res.send("EXPIRED");
 
-    if (Date.now() > data.expire) {
-        return res.send("EXPIRED");
-    }
-
-    if (!data.hwid) {
-
-        data.hwid = hwid;
-
-        db.keys[key] = data;
-
-        saveDB(db);
-
-    } else {
-
-        if (data.hwid !== hwid) {
-            return res.send("WRONG_HWID");
+        if (!data.hwid) {
+            data.hwid = hwid;
+            db.keys[key] = data;
+            saveDB(db);
+        } else {
+            if (data.hwid !== hwid) return res.send("WRONG_HWID");
         }
+
+        return res.send("ACTIVE");
     }
 
-    return res.send("ACTIVE");
-});
+    if (type === "version") {
+        return res.json({
+            version: "1.0.0",
+            status: "ok"
+        });
+    }
 
+    return res.send("ERROR");
+});
 // =========================
 // LOGIN
 // =========================
