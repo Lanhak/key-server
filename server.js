@@ -30,7 +30,7 @@ const DATABASE = path.join(__dirname, "database.json");
 // =========================
 
 app.use(cors());
-console.log("API HIT:", req.query);
+
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -534,7 +534,7 @@ app.get("/success", (req, res) => {
 // =========================
 
 app.get("/api", (req, res) => {
-
+    console.log("API HIT:", req.query);
     const type = req.query.api;
 
     if (type === "check") {
