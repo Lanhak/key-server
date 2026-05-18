@@ -1,10 +1,28 @@
 const express = require('express');
 const os = require('os');
+const path = require('path');
 
 const app = express();
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true }));
+// ========================================
+// CONFIG
+// ========================================
+
+const PORT = process.env.PORT || 3000;
+
+// ========================================
+// MIDDLEWARE
+// ========================================
+
+app.use(express.json({
+    limit: '50mb'
+}));
+
+app.use(express.urlencoded({
+    extended: true
+}));
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ========================================
 // MEMORY DATABASE
@@ -16,7 +34,9 @@ let USER = {
     name: "Guest User",
     coin: 1000,
     vip: false,
-    token: "token_xxxxxx"
+    token: "token_xxxxxx",
+    level: 1,
+    exp: 500
 };
 
 let JOBS = [
@@ -24,19 +44,22 @@ let JOBS = [
         id: 1,
         type: "follow",
         username: "demo_user_1",
-        reward: 100
+        reward: 100,
+        status: "pending"
     },
     {
         id: 2,
         type: "like",
         username: "demo_user_2",
-        reward: 50
+        reward: 50,
+        status: "pending"
     },
     {
         id: 3,
         type: "share",
         username: "demo_user_3",
-        reward: 70
+        reward: 70,
+        status: "pending"
     }
 ];
 
@@ -55,11 +78,17 @@ const C = {
 };
 
 // ========================================
-// BEAUTIFUL LOG
+// LOG SYSTEM
 // ========================================
 
 function line() {
-    console.log(C.cyan + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" + C.reset);
+
+    console.log(
+        C.cyan +
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" +
+        C.reset
+    );
+
 }
 
 function logRequest(req) {
@@ -67,22 +96,27 @@ function logRequest(req) {
     line();
 
     console.log(
-        C.green + "[API]" + C.reset,
-        req.method,
+        C.green + "[METHOD]" + C.reset,
+        req.method
+    );
+
+    console.log(
+        C.yellow + "[PATH]" + C.reset,
         req.path
     );
 
     console.log(
-        C.yellow + "[IP]" + C.reset,
+        C.blue + "[IP]" + C.reset,
         req.ip
     );
 
     console.log(
-        C.blue + "[BODY]" + C.reset,
+        C.white + "[BODY]" + C.reset,
         JSON.stringify(req.body, null, 2)
     );
 
     line();
+
 }
 
 // ========================================
@@ -94,32 +128,25 @@ app.use((req, res, next) => {
     logRequest(req);
 
     next();
-});
 
-// ========================================
-// HEADER
-// ========================================
-
-app.use((req, res, next) => {
-
-    res.setHeader("Content-Type", "application/json");
-
-    next();
 });
 
 // ========================================
 // HOME PAGE
 // ========================================
+
 app.get('/', (req, res) => {
 
-res.send(`app.get('/', (req, res) => {
-
-res.send(`
+    res.send(`
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
 
 <title>AI MOCK SERVER</title>
 
@@ -140,9 +167,9 @@ body{
     overflow-x:hidden;
 }
 
-/* ========================= */
+/* ======================================== */
 /* BACKGROUND */
-/* ========================= */
+/* ======================================== */
 
 .bg{
     position:fixed;
@@ -150,43 +177,55 @@ body{
     height:100%;
     top:0;
     left:0;
+
     background:
     radial-gradient(circle at top left,#0ea5e955,transparent 30%),
     radial-gradient(circle at bottom right,#7c3aed55,transparent 30%);
+
     z-index:-1;
 }
 
-/* ========================= */
+/* ======================================== */
 /* HEADER */
-/* ========================= */
+/* ======================================== */
 
 header{
     padding:25px;
+
     display:flex;
+
     justify-content:space-between;
+
     align-items:center;
+
     border-bottom:1px solid rgba(255,255,255,0.08);
+
     backdrop-filter:blur(10px);
 }
 
 .logo{
-    font-size:28px;
+    font-size:30px;
     font-weight:700;
     color:#38bdf8;
 }
 
 .status{
-    padding:10px 18px;
-    border-radius:999px;
     background:#16a34a22;
+
     color:#4ade80;
+
     border:1px solid #22c55e44;
+
+    padding:10px 18px;
+
+    border-radius:999px;
+
     font-size:14px;
 }
 
-/* ========================= */
-/* MAIN */
-/* ========================= */
+/* ======================================== */
+/* CONTAINER */
+/* ======================================== */
 
 .container{
     max-width:1200px;
@@ -194,32 +233,62 @@ header{
     padding:40px 20px;
 }
 
+/* ======================================== */
+/* GRID */
+/* ======================================== */
+
 .grid{
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+
+    grid-template-columns:
+    repeat(auto-fit,minmax(300px,1fr));
+
     gap:25px;
 }
 
+/* ======================================== */
+/* CARD */
+/* ======================================== */
+
 .card{
-    background:rgba(15,23,42,0.7);
-    border:1px solid rgba(255,255,255,0.08);
+    background:
+    rgba(15,23,42,0.7);
+
+    border:
+    1px solid rgba(255,255,255,0.08);
+
     border-radius:24px;
+
     padding:25px;
+
     backdrop-filter:blur(20px);
+
     transition:0.3s;
-    box-shadow:0 10px 30px rgba(0,0,0,0.4);
+
+    box-shadow:
+    0 10px 30px rgba(0,0,0,0.4);
 }
 
 .card:hover{
-    transform:translateY(-5px);
+
+    transform:
+    translateY(-5px);
+
     border-color:#38bdf8;
+
 }
 
 .card h2{
-    font-size:22px;
-    margin-bottom:20px;
     color:#38bdf8;
+
+    margin-bottom:20px;
+
+    font-size:24px;
 }
+
+/* ======================================== */
+/* INFO */
+/* ======================================== */
 
 .info{
     margin-bottom:15px;
@@ -232,40 +301,55 @@ header{
 
 .value{
     margin-top:5px;
+
     font-size:18px;
+
     font-weight:600;
 }
 
-/* ========================= */
-/* API LIST */
-/* ========================= */
+/* ======================================== */
+/* API */
+/* ======================================== */
 
 .api-list{
     display:flex;
+
     flex-direction:column;
+
     gap:14px;
 }
 
 .api{
     background:#0f172a;
+
     border-radius:14px;
+
     padding:14px;
-    border:1px solid rgba(255,255,255,0.05);
+
+    border:
+    1px solid rgba(255,255,255,0.05);
+
     transition:0.3s;
 }
 
 .api:hover{
-    border-color:#38bdf8;
     transform:scale(1.02);
+
+    border-color:#38bdf8;
 }
 
 .method{
-    font-size:12px;
-    font-weight:700;
-    padding:5px 10px;
-    border-radius:999px;
     display:inline-block;
+
     margin-bottom:10px;
+
+    font-size:12px;
+
+    font-weight:700;
+
+    padding:5px 10px;
+
+    border-radius:999px;
 }
 
 .get{
@@ -280,40 +364,48 @@ header{
 
 .path{
     font-size:15px;
+
     word-break:break-all;
 }
 
-/* ========================= */
+/* ======================================== */
 /* FOOTER */
-/* ========================= */
+/* ======================================== */
 
 footer{
     text-align:center;
+
     padding:40px;
+
     color:#64748b;
+
     font-size:14px;
 }
 
-/* ========================= */
+/* ======================================== */
 /* ANIMATION */
-/* ========================= */
+/* ======================================== */
 
 .fade{
     animation:fade 1s ease;
 }
 
 @keyframes fade{
+
     from{
         opacity:0;
         transform:translateY(20px);
     }
+
     to{
         opacity:1;
         transform:translateY(0);
     }
+
 }
 
 </style>
+
 </head>
 
 <body>
@@ -336,65 +428,66 @@ footer{
 
 <div class="grid fade">
 
-<!-- ================= -->
-<!-- USER CARD -->
-<!-- ================= -->
+<!-- USER -->
 
 <div class="card">
 
-<h2>👤 User Info</h2>
+<h2>👤 USER INFO</h2>
 
 <div class="info">
 <div class="label">Username</div>
-<div class="value">guest_user</div>
+<div class="value">${USER.username}</div>
+</div>
+
+<div class="info">
+<div class="label">Name</div>
+<div class="value">${USER.name}</div>
 </div>
 
 <div class="info">
 <div class="label">Coin</div>
-<div class="value">1000</div>
+<div class="value">${USER.coin}</div>
 </div>
 
 <div class="info">
 <div class="label">VIP</div>
-<div class="value">False</div>
+<div class="value">${USER.vip}</div>
 </div>
 
 <div class="info">
 <div class="label">Token</div>
-<div class="value">
-token_xxxxx
-</div>
+<div class="value">${USER.token}</div>
 </div>
 
 </div>
 
-<!-- ================= -->
-<!-- SERVER CARD -->
-<!-- ================= -->
+<!-- SERVER -->
 
 <div class="card">
 
-<h2>🖥 Server Info</h2>
+<h2>🖥 SERVER INFO</h2>
 
 <div class="info">
 <div class="label">Platform</div>
-<div class="value">Linux</div>
+<div class="value">${os.platform()}</div>
 </div>
 
 <div class="info">
 <div class="label">RAM</div>
-<div class="value">30.65 GB</div>
+<div class="value">
+${(os.totalmem()/1024/1024/1024).toFixed(2)} GB
+</div>
 </div>
 
 <div class="info">
 <div class="label">Port</div>
-<div class="value">3000</div>
+<div class="value">${PORT}</div>
 </div>
 
 <div class="info">
 <div class="label">Status</div>
 <div class="value" style="color:#4ade80;">
-Running
+RUNNING
 </div>
 </div>
 
@@ -402,13 +495,11 @@ Running
 
 </div>
 
-<!-- ================= -->
-<!-- API CARD -->
-<!-- ================= -->
+<!-- API -->
 
 <div class="card fade" style="margin-top:25px;">
 
-<h2>📡 API Endpoint</h2>
+<h2>📡 API ENDPOINT</h2>
 
 <div class="api-list">
 
@@ -459,17 +550,18 @@ Running
 </div>
 
 <footer>
-AI GENERATED MOCK SERVER UI
+AI GENERATED MOCK SERVER
 </footer>
 
 </body>
+
 </html>
 `);
 
 });
 
 // ========================================
-// USER
+// API USER
 // ========================================
 
 app.get('/api/users/me', (req, res) => {
@@ -482,7 +574,7 @@ app.get('/api/users/me', (req, res) => {
 });
 
 // ========================================
-// DEVICE REGISTER
+// API DEVICE REGISTER
 // ========================================
 
 app.post('/api/devices/register', (req, res) => {
@@ -496,7 +588,7 @@ app.post('/api/devices/register', (req, res) => {
 });
 
 // ========================================
-// JOB LIST
+// API JOB
 // ========================================
 
 app.get('/api/job', (req, res) => {
@@ -510,7 +602,7 @@ app.get('/api/job', (req, res) => {
 });
 
 // ========================================
-// CHECK JOB VALID
+// API VALID JOB
 // ========================================
 
 app.post('/api/job/check-job-valid', (req, res) => {
@@ -524,7 +616,7 @@ app.post('/api/job/check-job-valid', (req, res) => {
 });
 
 // ========================================
-// CHECK JOB SUCCESS
+// API SUCCESS JOB
 // ========================================
 
 app.post('/api/job/check_job_success', (req, res) => {
@@ -540,21 +632,22 @@ app.post('/api/job/check_job_success', (req, res) => {
 });
 
 // ========================================
-// TIKTOK ACCOUNT
+// API TIKTOK
 // ========================================
 
 app.post('/api/tiktok-account', (req, res) => {
 
     res.json({
         success: true,
-        username: req.body.username || "guest_tiktok",
+        username:
+        req.body.username || "guest_tiktok",
         connected: true
     });
 
 });
 
 // ========================================
-// FACEBOOK ACCOUNT
+// API FACEBOOK
 // ========================================
 
 app.post('/api/fb-account', (req, res) => {
@@ -568,7 +661,7 @@ app.post('/api/fb-account', (req, res) => {
 });
 
 // ========================================
-// INSTAGRAM ACCOUNT
+// API INSTAGRAM
 // ========================================
 
 app.post('/api/instagram-account', (req, res) => {
@@ -597,8 +690,6 @@ app.use((req, res) => {
 // ========================================
 // START SERVER
 // ========================================
-
-const PORT = 3000;
 
 app.listen(PORT, () => {
 
