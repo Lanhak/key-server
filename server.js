@@ -1,218 +1,118 @@
+
 const express = require("express")
 const bodyParser = require("body-parser")
 const cors = require("cors")
 const fs = require("fs")
 const crypto = require("crypto")
-const axios = require("axios")
-const { v4: uuidv4 } = require("uuid")
 
 const app = express()
 const PORT = process.env.PORT || 3000
 
 app.use(cors())
-app.use(bodyParser.json())
+app.use(bodyParser.json({ limit: "50mb" }))
 app.use(bodyParser.urlencoded({ extended: true }))
-app.use(express.static("public"))
-app.set("view engine", "ejs")
 
-const DB_FILE = "database.json"
+const DB = "database.json"
 
 function loadDB() {
-    if (!fs.existsSync(DB_FILE)) {
-        fs.writeFileSync(DB_FILE, JSON.stringify({
+
+    if (!fs.existsSync(DB)) {
+
+        fs.writeFileSync(DB, JSON.stringify({
             keys: [],
-            devices: []
+            devices: [],
+            logs: []
         }, null, 2))
     }
 
-    return JSON.parse(fs.readFileSync(DB_FILE))
+    return JSON.parse(fs.readFileSync(DB))
 }
 
 function saveDB(data) {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2))
+    fs.writeFileSync(DB, JSON.stringify(data, null, 2))
 }
 
 function randomKey() {
     return crypto.randomBytes(16).toString("hex")
 }
 
+function randomToken() {
+    return crypto.randomBytes(32).toString("hex")
+}
+
+app.use((req, res, next) => {
+
+    try {
+
+        const db = loadDB()
+
+        db.logs.push({
+            time: Date.now(),
+            path: req.path,
+            method: req.method,
+            body: req.body,
+            headers: req.headers
+        })
+
+        saveDB(db)
+
+    } catch(e) {}
+
+    next()
+})
+
 app.get("/", (req, res) => {
-    const db = loadDB()
 
     res.send(`
     <html>
     <head>
-        <title>Key Server</title>
+        <title>MTool Server</title>
         <style>
             body{
                 background:#0f172a;
                 color:white;
                 font-family:Arial;
-                padding:40px;
+                padding:30px;
             }
 
             .card{
                 background:#1e293b;
                 padding:20px;
-                border-radius:15px;
+                border-radius:20px;
                 margin-bottom:20px;
-            }
-
-            button{
-                padding:12px;
-                border:none;
-                border-radius:10px;
-                background:#2563eb;
-                color:white;
-                cursor:pointer;
             }
         </style>
     </head>
 
     <body>
-        <h1>KEY SERVER ONLINE</h1>
 
         <div class="card">
-            <h2>Total Keys: ${db.keys.length}</h2>
-            <h2>Total Devices: ${db.devices.length}</h2>
+            <h1>MTOOL SERVER ONLINE</h1>
+            <p>Status: ONLINE</p>
         </div>
 
         <div class="card">
-            <h2>API STATUS</h2>
-            <p>Server Running Successfully</p>
+            <h2>Total Endpoints</h2>
+            <p>68</p>
         </div>
+
     </body>
     </html>
     `)
 })
 
-// Generate key
-app.post("/generate", async (req, res) => {
-    try {
-        const { device_id } = req.body
-
-        if (!device_id) {
-            return res.json({
-                success: false,
-                message: "device_id required"
-            })
-        }
-
-        // Link4m verify
-        const LINK4M_API = "6899fc9d171a1f07277dde22"
-
-        const key = randomKey()
-
-        const db = loadDB()
-
-        db.keys.push({
-            key,
-            device_id,
-            created_at: Date.now(),
-            active: true
-        })
-
-        saveDB(db)
-
-        res.json({
-            success: true,
-            key,
-            device_id,
-            expires_in: "30d",
-            message: "Key generated"
-        })
-
-    } catch (e) {
-        res.json({
-            success: false,
-            error: e.toString()
-        })
-    }
-})
-
-// Verify key
-app.post("/verify", (req, res) => {
-    try {
-        const { key, device_id } = req.body
-
-        const db = loadDB()
-
-        const found = db.keys.find(x =>
-            x.key === key &&
-            x.device_id === device_id &&
-            x.active === true
-        )
-
-        if (!found) {
-            return res.json({
-                success: false,
-                valid: false,
-                message: "Invalid key"
-            })
-        }
-
-        res.json({
-            success: true,
-            valid: true,
-            premium: true,
-            expires: "2099-12-31",
-            device_id
-        })
-
-    } catch (e) {
-        res.json({
-            success: false,
-            error: e.toString()
-        })
-    }
-})
-
-// Register device
-app.post("/register-device", (req, res) => {
-
-    const {
-        device_id,
-        model,
-        brand,
-        android
-    } = req.body
-
-    const db = loadDB()
-
-    const exist = db.devices.find(x => x.device_id === device_id)
-
-    if (!exist) {
-        db.devices.push({
-            id: uuidv4(),
-            device_id,
-            model,
-            brand,
-            android,
-            created_at: Date.now()
-        })
-
-        saveDB(db)
-    }
-
-    res.json({
-        success: true,
-        registered: true
-    })
-})
-
-// SERVER TIME
 app.get("/server-time", (req, res) => {
+
     res.json({
         success: true,
         timestamp: Math.floor(Date.now() / 1000),
-        time: new Date().toISOString(),
         timezone: "Asia/Ho_Chi_Minh",
         server: "online"
     })
 })
 
-// PING
 app.get("/ping", (req, res) => {
+
     res.json({
         success: true,
         message: "pong",
@@ -220,37 +120,59 @@ app.get("/ping", (req, res) => {
     })
 })
 
-// STATUS
 app.get("/status", (req, res) => {
+
     res.json({
         success: true,
         online: true,
-        api: true,
         maintenance: false
     })
 })
 
-// GET ALL KEYS
-app.get("/keys", (req, res) => {
-    const db = loadDB()
+app.get("/config", (req, res) => {
 
     res.json({
         success: true,
-        total: db.keys.length,
-        data: db.keys
+        premium: true,
+        maintenance: false,
+        version: "99.0.0"
     })
 })
 
-// GET DEVICE KEY
-app.get("/keys/:device", (req, res) => {
-
-    const device = req.params.device
+app.post("/generate", (req, res) => {
 
     const db = loadDB()
 
-    const found = db.keys.find(x => x.device_id === device)
+    const key = randomKey()
+
+    db.keys.push({
+        key,
+        device_id: req.body.device_id || "unknown",
+        premium: true,
+        active: true,
+        created_at: Date.now()
+    })
+
+    saveDB(db)
+
+    res.json({
+        success: true,
+        key,
+        premium: true,
+        expires: "2099-12-31"
+    })
+})
+
+app.post("/verify", (req, res) => {
+
+    const db = loadDB()
+
+    const found = db.keys.find(x =>
+        x.key == req.body.key
+    )
 
     if (!found) {
+
         return res.json({
             success: false,
             valid: false
@@ -260,150 +182,811 @@ app.get("/keys/:device", (req, res) => {
     res.json({
         success: true,
         valid: true,
-        key: found.key,
         premium: true,
         expires: "2099-12-31"
     })
 })
 
-// CHECK KEY
-app.post("/keys/check", (req, res) => {
 
-    const { key } = req.body
-
-    const db = loadDB()
-
-    const found = db.keys.find(x => x.key === key)
-
-    res.json({
-        success: !!found,
-        valid: !!found,
-        premium: !!found
-    })
-})
-
-// DEVICE CHECK
-app.post("/device/check", (req, res) => {
-
-    const { device_id } = req.body
-
-    const db = loadDB()
-
-    const found = db.devices.find(x => x.device_id === device_id)
+app.all("/0396785304", (req, res) => {
 
     res.json({
         success: true,
-        exists: !!found,
-        device_id
+        endpoint: "/0396785304",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
     })
 })
 
-// DEVICE BIND
-app.post("/device/bind", (req, res) => {
 
-    const { key, device_id } = req.body
-
-    const db = loadDB()
-
-    const found = db.keys.find(x => x.key === key)
-
-    if (!found) {
-        return res.json({
-            success: false,
-            message: "invalid key"
-        })
-    }
-
-    found.device_id = device_id
-
-    saveDB(db)
+app.all("/?lang=vi", (req, res) => {
 
     res.json({
         success: true,
-        bind: true
+        endpoint: "/?lang=vi",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
     })
 })
 
-// AUTH
-app.post("/auth", (req, res) => {
 
-    const token = crypto.randomBytes(32).toString("hex")
+app.all("/@", (req, res) => {
 
     res.json({
         success: true,
-        token,
-        expired: false,
-        premium: true
+        endpoint: "/@",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
     })
 })
 
-// VERIFY TOKEN
-app.post("/token/verify", (req, res) => {
+
+app.all("/@codevuong", (req, res) => {
 
     res.json({
         success: true,
-        valid: true,
-        premium: true
+        endpoint: "/@codevuong",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
     })
 })
 
-// VERSION
-app.get("/app/version", (req, res) => {
+
+app.all("/aapt", (req, res) => {
 
     res.json({
         success: true,
-        version: "99.0.0",
-        force_update: false,
-        update_url: ""
+        endpoint: "/aapt",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
     })
 })
 
-// NOTICE LIST
-app.get("/notices", (req, res) => {
+
+app.all("/accounts/edit/", (req, res) => {
 
     res.json({
         success: true,
-        data: [
-            {
-                title: "Server Online",
-                content: "Welcome",
-                created_at: Date.now()
-            }
-        ]
+        endpoint: "/accounts/edit/",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
     })
 })
 
-// MAHOA
-app.post("/golike/mahoa", (req, res) => {
 
-    const { text } = req.body
-
-    const encoded = Buffer.from(text || "").toString("base64")
+app.all("/accounts/emailsignup/", (req, res) => {
 
     res.json({
         success: true,
-        original: text,
-        encoded
+        endpoint: "/accounts/emailsignup/",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
     })
 })
 
-// Notice endpoint
-app.get("/notice/latest", (req, res) => {
+
+app.all("/address.api.php", (req, res) => {
+
     res.json({
         success: true,
-        title: "Server Online",
-        message: "Welcome To New Server",
-        version: "1.0.0"
+        endpoint: "/address.api.php",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
     })
 })
 
-// Config endpoint
-app.get("/config", (req, res) => {
+
+app.all("/api.php", (req, res) => {
+
     res.json({
         success: true,
-        api: "online",
-        maintenance: false,
-        min_version: "1.0.0"
+        endpoint: "/api.php",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/?fields=", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/?fields=",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/?fields=tiktok_run&id=", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/?fields=tiktok_run&id=",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/advertising/publishers/", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/advertising/publishers/",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/advertising/publishers/tiktok/jobs?account_id=", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/advertising/publishers/tiktok/jobs?account_id=",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/coin/?type=", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/coin/?type=",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/fb-account", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/fb-account",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/fb-account/verify-account", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/fb-account/verify-account",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/graphql/", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/graphql/",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/instagram-account", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/instagram-account",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/job", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/job",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/job/check-job-valid", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/job/check-job-valid",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/job/check_job_success", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/job/check_job_success",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/report/send", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/report/send",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/statistics/report", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/statistics/report",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/tiktok-account", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/tiktok-account",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/users/me", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/users/me",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/v1/users/web_profile_info/?username=", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/v1/users/web_profile_info/?username=",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/v1/web/accounts/edit/", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/v1/web/accounts/edit/",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/v1/web/accounts/web_change_profile_picture/", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/v1/web/accounts/web_change_profile_picture/",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/v1/web/accounts/web_create_ajax/attempt/", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/v1/web/accounts/web_create_ajax/attempt/",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/api/v1/web/friendships/", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/api/v1/web/friendships/",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/apk/res-auto", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/apk/res-auto",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/apk/res/android", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/apk/res/android",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/app/version", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/app/version",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/auth", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/auth",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/createTask", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/createTask",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/device/bind", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/device/bind",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/device/check", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/device/check",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/g/qqfrph952", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/g/qqfrph952",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/getTaskResult", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/getTaskResult",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/golike/mahoa", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/golike/mahoa",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/google/gson/blob/main/Troubleshooting.md#", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/google/gson/blob/main/Troubleshooting.md#",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/graphql/query", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/graphql/query",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/groups/", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/groups/",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/home/", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/home/",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/ip", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/ip",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/ip.json", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/ip.json",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/keys", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/keys",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/keys/check", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/keys/check",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/licenses/", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/licenses/",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/m/?lang=vi", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/m/?lang=vi",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/me", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/me",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/notice/latest", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/notice/latest",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/notices", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/notices",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/scr/login.php", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/scr/login.php",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/scr/tiktok_add.php", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/scr/tiktok_add.php",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/scr/user.php", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/scr/user.php",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/token/verify", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/token/verify",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/view/chtiktok/", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/view/chtiktok/",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/view/setting/", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/view/setting/",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.all("/view/setting/load.php", (req, res) => {
+
+    res.json({
+        success: true,
+        endpoint: "/view/setting/load.php",
+        method: req.method,
+        premium: true,
+        status: 200,
+        timestamp: Date.now()
+    })
+})
+
+
+app.use((req, res) => {
+
+    res.status(200).json({
+        success: false,
+        message: "endpoint not found",
+        path: req.path
     })
 })
 
