@@ -1,471 +1,412 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const compression = require('compression');
-const morgan = require('morgan');
-const axios = require('axios');
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
+const express = require("express")
+const bodyParser = require("body-parser")
+const cors = require("cors")
+const fs = require("fs")
+const crypto = require("crypto")
+const axios = require("axios")
+const { v4: uuidv4 } = require("uuid")
 
-const app = express();
+const app = express()
+const PORT = process.env.PORT || 3000
 
-// =============================
-// CONFIG
-// =============================
+app.use(cors())
+app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({ extended: true }))
+app.use(express.static("public"))
+app.set("view engine", "ejs")
 
-const PORT = process.env.PORT || 3000;
-const API_URL = 'https://key-server-zfwa.onrender.com';
-const SECRET_KEY = process.env.SECRET_KEY || 'mtoolmax_secret';
+const DB_FILE = "database.json"
 
-// =============================
-// MIDDLEWARE
-// =============================
-
-app.use(cors());
-app.use(helmet());
-app.use(compression());
-app.use(morgan('dev'));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-// =============================
-// MEMORY DATABASE
-// =============================
-
-let DATABASE = {
-    users: [],
-    logs: [],
-    keys: [],
-    tasks: []
-};
-
-// =============================
-// HELPERS
-// =============================
-
-function generateToken() {
-    return crypto.randomBytes(32).toString('hex');
-}
-
-function logAction(action, data = {}) {
-    DATABASE.logs.push({
-        action,
-        data,
-        time: new Date().toISOString()
-    });
-}
-
-function createKey() {
-    return 'MTOOL-' + crypto.randomBytes(8).toString('hex').toUpperCase();
-}
-
-// =============================
-// HOME
-// =============================
-
-app.get('/', (req, res) => {
-    res.json({
-        success: true,
-        message: 'MToolMax Server Running',
-        server: API_URL,
-        time: new Date().toISOString()
-    });
-});
-
-// =============================
-// STATUS
-// =============================
-
-app.get('/status', (req, res) => {
-    res.json({
-        online: true,
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
-        users: DATABASE.users.length,
-        keys: DATABASE.keys.length,
-        logs: DATABASE.logs.length
-    });
-});
-
-// =============================
-// REGISTER
-// =============================
-
-app.post('/register', (req, res) => {
-    try {
-        const { username, password } = req.body;
-
-        if (!username || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Thiếu username hoặc password'
-            });
-        }
-
-        const exists = DATABASE.users.find(u => u.username === username);
-
-        if (exists) {
-            return res.status(400).json({
-                success: false,
-                message: 'Tài khoản đã tồn tại'
-            });
-        }
-
-        const user = {
-            id: Date.now(),
-            username,
-            password,
-            token: generateToken(),
-            createdAt: new Date().toISOString()
-        };
-
-        DATABASE.users.push(user);
-
-        logAction('REGISTER', {
-            username
-        });
-
-        res.json({
-            success: true,
-            message: 'Đăng ký thành công',
-            token: user.token
-        });
-
-    } catch (err) {
-        res.status(500).json({
-            success: false,
-            error: err.message
-        });
+function loadDB() {
+    if (!fs.existsSync(DB_FILE)) {
+        fs.writeFileSync(DB_FILE, JSON.stringify({
+            keys: [],
+            devices: []
+        }, null, 2))
     }
-});
 
-// =============================
-// LOGIN
-// =============================
+    return JSON.parse(fs.readFileSync(DB_FILE))
+}
 
-app.post('/login', (req, res) => {
-    try {
-        const { username, password } = req.body;
+function saveDB(data) {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2))
+}
 
-        const user = DATABASE.users.find(
-            u => u.username === username && u.password === password
-        );
+function randomKey() {
+    return crypto.randomBytes(16).toString("hex")
+}
 
-        if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: 'Sai tài khoản hoặc mật khẩu'
-            });
-        }
+app.get("/", (req, res) => {
+    const db = loadDB()
 
-        logAction('LOGIN', {
-            username
-        });
-
-        res.json({
-            success: true,
-            token: user.token,
-            user: {
-                id: user.id,
-                username: user.username
+    res.send(`
+    <html>
+    <head>
+        <title>Key Server</title>
+        <style>
+            body{
+                background:#0f172a;
+                color:white;
+                font-family:Arial;
+                padding:40px;
             }
-        });
 
-    } catch (err) {
-        res.status(500).json({
-            success: false,
-            error: err.message
-        });
-    }
-});
+            .card{
+                background:#1e293b;
+                padding:20px;
+                border-radius:15px;
+                margin-bottom:20px;
+            }
 
-// =============================
-// GENERATE KEY
-// =============================
+            button{
+                padding:12px;
+                border:none;
+                border-radius:10px;
+                background:#2563eb;
+                color:white;
+                cursor:pointer;
+            }
+        </style>
+    </head>
 
-app.post('/create-key', (req, res) => {
+    <body>
+        <h1>KEY SERVER ONLINE</h1>
+
+        <div class="card">
+            <h2>Total Keys: ${db.keys.length}</h2>
+            <h2>Total Devices: ${db.devices.length}</h2>
+        </div>
+
+        <div class="card">
+            <h2>API STATUS</h2>
+            <p>Server Running Successfully</p>
+        </div>
+    </body>
+    </html>
+    `)
+})
+
+// Generate key
+app.post("/generate", async (req, res) => {
     try {
-        const key = createKey();
+        const { device_id } = req.body
 
-        DATABASE.keys.push({
+        if (!device_id) {
+            return res.json({
+                success: false,
+                message: "device_id required"
+            })
+        }
+
+        // Link4m verify
+        const LINK4M_API = "6899fc9d171a1f07277dde22"
+
+        const key = randomKey()
+
+        const db = loadDB()
+
+        db.keys.push({
             key,
-            createdAt: new Date().toISOString(),
+            device_id,
+            created_at: Date.now(),
             active: true
-        });
+        })
 
-        logAction('CREATE_KEY', {
-            key
-        });
+        saveDB(db)
 
         res.json({
             success: true,
-            key
-        });
-
-    } catch (err) {
-        res.status(500).json({
-            success: false,
-            error: err.message
-        });
-    }
-});
-
-// =============================
-// CHECK KEY
-// =============================
-
-app.post('/check-key', (req, res) => {
-    try {
-        const { key } = req.body;
-
-        const found = DATABASE.keys.find(k => k.key === key);
-
-        if (!found) {
-            return res.json({
-                success: false,
-                valid: false
-            });
-        }
-
-        res.json({
-            success: true,
-            valid: found.active
-        });
-
-    } catch (err) {
-        res.status(500).json({
-            success: false,
-            error: err.message
-        });
-    }
-});
-
-// =============================
-// NOTICE API
-// =============================
-
-app.get('/notice/latest', (req, res) => {
-    res.json({
-        status: 'online',
-        force_update: false,
-        versionName: '2.0.0',
-        update_url: 'https://example.com/update.apk',
-        message: 'Server hoạt động bình thường',
-        motd: 'Welcome To MToolMax',
-        notice: 'Không có thông báo mới'
-    });
-});
-
-// =============================
-// TASK API
-// =============================
-
-app.post('/task/add', (req, res) => {
-    try {
-        const { title, data } = req.body;
-
-        const task = {
-            id: Date.now(),
-            title,
-            data,
-            createdAt: new Date().toISOString()
-        };
-
-        DATABASE.tasks.push(task);
-
-        res.json({
-            success: true,
-            task
-        });
-
-    } catch (err) {
-        res.status(500).json({
-            success: false,
-            error: err.message
-        });
-    }
-});
-
-app.get('/task/list', (req, res) => {
-    res.json({
-        success: true,
-        tasks: DATABASE.tasks
-    });
-});
-
-// =============================
-// LOGS
-// =============================
-
-app.get('/logs', (req, res) => {
-    res.json({
-        success: true,
-        logs: DATABASE.logs
-    });
-});
-
-// =============================
-// SAVE DATABASE
-// =============================
-
-function saveDatabase() {
-    try {
-        fs.writeFileSync(
-            path.join(__dirname, 'database.json'),
-            JSON.stringify(DATABASE, null, 2)
-        );
-    } catch (err) {
-        console.log('Save DB Error:', err.message);
-    }
-}
-
-function loadDatabase() {
-    try {
-        const file = path.join(__dirname, 'database.json');
-
-        if (fs.existsSync(file)) {
-            DATABASE = JSON.parse(fs.readFileSync(file));
-        }
-    } catch (err) {
-        console.log('Load DB Error:', err.message);
-    }
-}
-
-loadDatabase();
-
-setInterval(() => {
-    saveDatabase();
-}, 10000);
-
-// =============================
-// ERROR HANDLER
-// =============================
-
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-
-    res.status(500).json({
-        success: false,
-        message: 'Internal Server Error'
-    });
-});
-
-// =============================
-// START SERVER
-// =============================
-
-// ========================================
-// LINK4M FREE KEY SYSTEM
-// ========================================
-
-const LINK4M_API = "6899fc9d171a1f07277dde22";
-
-let FREE_KEYS = {};
-
-app.get('/api/free-key', async (req, res) => {
-    try {
-        const uid = req.query.uid;
-
-        if (!uid) {
-            return res.json({
-                success: false,
-                message: 'Thiếu UID'
-            });
-        }
-
-        const destination = encodeURIComponent(
-            `https://key-server-zfwa.onrender.com/api/free-key-success?uid=${uid}`
-        );
-
-        const url = `https://link4m.co/api-shorten/v2?api=${LINK4M_API}&url=${destination}`;
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (!data.shortenedUrl) {
-            return res.json({
-                success: false,
-                message: 'Không tạo được link vượt'
-            });
-        }
-
-        res.json({
-            success: true,
-            url: data.shortenedUrl
-        });
+            key,
+            device_id,
+            expires_in: "30d",
+            message: "Key generated"
+        })
 
     } catch (e) {
         res.json({
             success: false,
-            message: e.message
-        });
+            error: e.toString()
+        })
     }
-});
+})
 
-app.get('/api/free-key-success', (req, res) => {
-    const uid = req.query.uid;
+// Verify key
+app.post("/verify", (req, res) => {
+    try {
+        const { key, device_id } = req.body
 
-    if (!uid) {
-        return res.send('Thiếu UID');
-    }
+        const db = loadDB()
 
-    const freeKey = 'FREE-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+        const found = db.keys.find(x =>
+            x.key === key &&
+            x.device_id === device_id &&
+            x.active === true
+        )
 
-    FREE_KEYS[uid] = {
-        key: freeKey,
-        expired: Date.now() + (24 * 60 * 60 * 1000)
-    };
+        if (!found) {
+            return res.json({
+                success: false,
+                valid: false,
+                message: "Invalid key"
+            })
+        }
 
-    res.send(`
-    <html>
-    <body style="background:#111;color:white;text-align:center;padding-top:100px;font-family:sans-serif;">
-        <h1>FREE KEY</h1>
-        <h2>${freeKey}</h2>
-        <p>Key dùng 24 giờ</p>
-    </body>
-    </html>
-    `);
-});
+        res.json({
+            success: true,
+            valid: true,
+            premium: true,
+            expires: "2099-12-31",
+            device_id
+        })
 
-app.post('/api/check-free-key', (req, res) => {
-    const { uid, key } = req.body;
-
-    if (!FREE_KEYS[uid]) {
-        return res.json({
+    } catch (e) {
+        res.json({
             success: false,
-            message: 'UID chưa lấy key'
-        });
+            error: e.toString()
+        })
     }
+})
 
-    const data = FREE_KEYS[uid];
+// Register device
+app.post("/register-device", (req, res) => {
 
-    if (Date.now() > data.expired) {
-        delete FREE_KEYS[uid];
+    const {
+        device_id,
+        model,
+        brand,
+        android
+    } = req.body
 
-        return res.json({
-            success: false,
-            message: 'Key hết hạn'
-        });
-    }
+    const db = loadDB()
 
-    if (data.key !== key) {
-        return res.json({
-            success: false,
-            message: 'Key sai'
-        });
+    const exist = db.devices.find(x => x.device_id === device_id)
+
+    if (!exist) {
+        db.devices.push({
+            id: uuidv4(),
+            device_id,
+            model,
+            brand,
+            android,
+            created_at: Date.now()
+        })
+
+        saveDB(db)
     }
 
     res.json({
         success: true,
-        message: 'Key hợp lệ'
-    });
-});
+        registered: true
+    })
+})
+
+// SERVER TIME
+app.get("/server-time", (req, res) => {
+    res.json({
+        success: true,
+        timestamp: Math.floor(Date.now() / 1000),
+        time: new Date().toISOString(),
+        timezone: "Asia/Ho_Chi_Minh",
+        server: "online"
+    })
+})
+
+// PING
+app.get("/ping", (req, res) => {
+    res.json({
+        success: true,
+        message: "pong",
+        status: 200
+    })
+})
+
+// STATUS
+app.get("/status", (req, res) => {
+    res.json({
+        success: true,
+        online: true,
+        api: true,
+        maintenance: false
+    })
+})
+
+// GET ALL KEYS
+app.get("/keys", (req, res) => {
+    const db = loadDB()
+
+    res.json({
+        success: true,
+        total: db.keys.length,
+        data: db.keys
+    })
+})
+
+// GET DEVICE KEY
+app.get("/keys/:device", (req, res) => {
+
+    const device = req.params.device
+
+    const db = loadDB()
+
+    const found = db.keys.find(x => x.device_id === device)
+
+    if (!found) {
+        return res.json({
+            success: false,
+            valid: false
+        })
+    }
+
+    res.json({
+        success: true,
+        valid: true,
+        key: found.key,
+        premium: true,
+        expires: "2099-12-31"
+    })
+})
+
+// CHECK KEY
+app.post("/keys/check", (req, res) => {
+
+    const { key } = req.body
+
+    const db = loadDB()
+
+    const found = db.keys.find(x => x.key === key)
+
+    res.json({
+        success: !!found,
+        valid: !!found,
+        premium: !!found
+    })
+})
+
+// DEVICE CHECK
+app.post("/device/check", (req, res) => {
+
+    const { device_id } = req.body
+
+    const db = loadDB()
+
+    const found = db.devices.find(x => x.device_id === device_id)
+
+    res.json({
+        success: true,
+        exists: !!found,
+        device_id
+    })
+})
+
+// DEVICE BIND
+app.post("/device/bind", (req, res) => {
+
+    const { key, device_id } = req.body
+
+    const db = loadDB()
+
+    const found = db.keys.find(x => x.key === key)
+
+    if (!found) {
+        return res.json({
+            success: false,
+            message: "invalid key"
+        })
+    }
+
+    found.device_id = device_id
+
+    saveDB(db)
+
+    res.json({
+        success: true,
+        bind: true
+    })
+})
+
+// AUTH
+app.post("/auth", (req, res) => {
+
+    const token = crypto.randomBytes(32).toString("hex")
+
+    res.json({
+        success: true,
+        token,
+        expired: false,
+        premium: true
+    })
+})
+
+// VERIFY TOKEN
+app.post("/token/verify", (req, res) => {
+
+    res.json({
+        success: true,
+        valid: true,
+        premium: true
+    })
+})
+
+// VERSION
+app.get("/app/version", (req, res) => {
+
+    res.json({
+        success: true,
+        version: "99.0.0",
+        force_update: false,
+        update_url: ""
+    })
+})
+
+// NOTICE LIST
+app.get("/notices", (req, res) => {
+
+    res.json({
+        success: true,
+        data: [
+            {
+                title: "Server Online",
+                content: "Welcome",
+                created_at: Date.now()
+            }
+        ]
+    })
+})
+
+// MAHOA
+app.post("/golike/mahoa", (req, res) => {
+
+    const { text } = req.body
+
+    const encoded = Buffer.from(text || "").toString("base64")
+
+    res.json({
+        success: true,
+        original: text,
+        encoded
+    })
+})
+
+// Notice endpoint
+app.get("/notice/latest", (req, res) => {
+    res.json({
+        success: true,
+        title: "Server Online",
+        message: "Welcome To New Server",
+        version: "1.0.0"
+    })
+})
+
+// Config endpoint
+app.get("/config", (req, res) => {
+    res.json({
+        success: true,
+        api: "online",
+        maintenance: false,
+        min_version: "1.0.0"
+    })
+})
 
 app.listen(PORT, () => {
-    console.log(`====================================`);
-    console.log(`MToolMax Server Running`);
-    console.log(`PORT: ${PORT}`);
-    console.log(`URL: ${API_URL}`);
-    console.log(`====================================`);
-});
+    console.log(`Server running on port ${PORT}`)
+})
